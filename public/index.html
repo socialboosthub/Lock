@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101116">
+  <title>AHM Studio — Free Cinematic Story Editor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brandMark">AHM</div>
+    <div>
+      <div class="brand">AHM STUDIO</div>
+      <div class="tagline">AI STORY VIDEO MAKER · ZERO-COST EDITOR</div>
+    </div>
+    <div class="freeBadge">$0 MODE</div>
+  </header>
+
+  <main class="layout">
+    <section class="intro panel">
+      <div class="eyebrow">CREATE · DIRECT · EDIT</div>
+      <h1>Turn your story into a cinematic video.</h1>
+      <p>Plan scenes, create visual prompts, animate images, add narration and subtitles, then export your video directly from your browser.</p>
+
+      <div class="notice">
+        <strong>Free mode:</strong>
+        This version does not use paid AI APIs. You supply images and narration created with available free tools, and AHM assembles them into a video.
+      </div>
+
+      <div class="toolLinks">
+        <a href="https://huggingface.co/spaces/mrfakename/Z-Image-Turbo" target="_blank" rel="noopener">Free AI images ↗</a>
+        <a href="https://huggingface.co/spaces/Qwen/Qwen3-TTS" target="_blank" rel="noopener">AI narration ↗</a>
+        <a href="https://huggingface.co/chat/" target="_blank" rel="noopener">AI story writer ↗</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="sectionHead">
+        <span class="step">01</span>
+        <div>
+          <h2>Story and narration</h2>
+          <p>Write your story or paste an existing script.</p>
+        </div>
+      </div>
+
+      <label for="titleInput">Video title</label>
+      <input id="titleInput" maxlength="100"
+        placeholder="The Fisherman Who Found a Golden Fish"
+        value="The Secret Beneath the Lake">
+
+      <label for="scriptInput">Story / narration script</label>
+      <textarea id="scriptInput" rows="7"
+        placeholder="Paste your complete story here. Separate important moments into sentences or paragraphs."></textarea>
+
+      <div class="row wrap">
+        <button id="sceneBtn" class="secondary">Build scene plan</button>
+        <span class="hint">The scene planner works without an API key.</span>
+      </div>
+
+      <label class="uploadBox" for="voiceFile">
+        <span class="uploadIcon">🎙️</span>
+        <span>
+          <strong>Upload narration audio</strong>
+          <small>Choose your narration audio file.</small>
+          <em id="voiceName">No narration uploaded</em>
+        </span>
+      </label>
+      <input class="hiddenInput" id="voiceFile" type="file" accept="audio/*">
+
+      <label class="uploadBox" for="musicFile">
+        <span class="uploadIcon">🎵</span>
+        <span>
+          <strong>Background music</strong>
+          <small>Optional. Use audio you have permission to use.</small>
+          <em id="musicName">No music uploaded</em>
+        </span>
+      </label>
+      <input class="hiddenInput" id="musicFile" type="file" accept="audio/*">
+    </section>
+
+    <section class="panel">
+      <div class="sectionHead">
+        <span class="step">02</span>
+        <div>
+          <h2>AI scene director</h2>
+          <p>Generate image prompts and upload one image for each scene.</p>
+        </div>
+      </div>
+
+      <div class="sceneControls row wrap">
+        <label class="compactLabel" for="sceneCount">Scenes</label>
+        <select id="sceneCount">
+          <option>5</option>
+          <option selected>6</option>
+          <option>7</option>
+          <option>8</option>
+          <option>9</option>
+          <option>10</option>
+        </select>
+
+        <label class="compactLabel" for="visualStyle">Visual style</label>
+        <select id="visualStyle">
+          <option value="cinematic 3D animated film still">Cinematic 3D</option>
+          <option value="stylized realistic 3D folktale animation">3D folktale</option>
+          <option value="dramatic cinematic illustration">Cinematic illustration</option>
+          <option value="photorealistic cinematic still">Photorealistic</option>
+        </select>
+      </div>
+
+      <div id="scenes" class="scenesEmpty">Build a scene plan to begin.</div>
+
+      <div class="promptTip">
+        <strong>Character consistency:</strong>
+        Keep character descriptions consistent between images. Generate vertical 9:16 images without text or watermarks.
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="sectionHead">
+        <span class="step">03</span>
+        <div>
+          <h2>Render your video</h2>
+          <p>Combine your scenes, animated camera movement, subtitles and audio.</p>
+        </div>
+      </div>
+
+      <div class="renderSettings row wrap">
+        <div>
+          <label for="fpsSelect">Frame rate</label>
+          <select id="fpsSelect">
+            <option value="24">24 fps</option>
+            <option value="30" selected>30 fps</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="subtitleSize">Subtitle size</label>
+          <select id="subtitleSize">
+            <option value="small">Small</option>
+            <option value="medium" selected>Large</option>
+            <option value="large">Extra large</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="musicVolume">Music volume</label>
+          <input id="musicVolume" type="range" min="0" max="35" value="12">
+          <span id="musicVolumeValue">12%</span>
+        </div>
+      </div>
+
+      <div class="renderPreview">
+        <canvas id="previewCanvas" width="360" height="640"></canvas>
+
+        <div class="previewInfo">
+          <strong id="previewTitle">Your video preview</strong>
+          <p id="previewCaption">Build your scene plan, upload images, then render.</p>
+          <div id="renderStatus" class="status">READY</div>
+          <div class="progressTrack"><div id="progressBar"></div></div>
+          <small id="progressText">0%</small>
+        </div>
+      </div>
+
+      <div class="row wrap renderButtons">
+        <button id="previewBtn" class="secondary">Preview motion</button>
+        <button id="renderBtn" class="primary">Render video</button>
+        <button id="cancelBtn" class="secondary" disabled>Cancel</button>
+      </div>
+
+      <div id="downloadArea" class="downloadArea hidden"></div>
+
+      <p class="smallNote">
+        Your browser exports MP4 if its recorder supports it. Otherwise, it exports WebM. Rendering is limited by your phone's memory and browser capabilities.
+      </p>
+    </section>
+
+    <section class="panel">
+      <div class="sectionHead">
+        <span class="step">04</span>
+        <div>
+          <h2>Video history</h2>
+          <p>Videos saved in this browser on this device.</p>
+        </div>
+      </div>
+
+      <div id="historyList" class="historyEmpty">
+        Your rendered videos will appear here.
+      </div>
+
+      <button id="clearHistoryBtn" class="textButton">Clear local history</button>
+    </section>
+
+    <footer>AHM STUDIO · ZERO-COST EDITOR · NO RUNPOD · NO PAID API KEYS</footer>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+        </html>
