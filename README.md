@@ -56,3 +56,24 @@ user's pages without the user approving it first.
 For real production, the final MP4 should also be copied to durable object storage
 and the history database should store its permanent URL. The starter keeps the
 architecture simple until the RunPod worker and storage provider are connected.
+
+## Free-first environment variables
+
+The story-planning API uses Google Gemini. Add the following in Vercel
+(Project → Settings → Environment Variables):
+
+- `GEMINI_API_KEY` — required; paste the secret key created in Google AI Studio.
+- `GEMINI_MODEL` — optional; defaults to `gemini-2.5-flash`.
+
+Set these for **Production** and **Preview** if you want both deployments to use
+the story planner. Redeploy after adding or changing environment variables.
+
+Do not put API keys in browser JavaScript, HTML, GitHub commits, or public messages.
+The server reads the key from the environment. The story-planning endpoint is
+`POST /api/story/plan` and accepts JSON with an optional `idea` and
+`targetDuration`.
+
+Important: this endpoint creates a story and scene-production plan only. It does
+not claim to generate a finished video. A real visual/video provider and a final
+rendering pipeline still need to be connected before AHM can offer a complete
+downloadable cinematic video.
