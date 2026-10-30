@@ -603,3 +603,7 @@ footer {
     flex-basis: 100%;
   }
   }
+
+
+/* AI story director result */
+.aiStorySummary{margin:12px 0 4px;padding:14px;border:1px solid #3c5d57;border-radius:12px;background:#13211f}.aiStorySummary strong{display:block;color:var(--cyan);margin-bottom:6px}.aiStorySummary p{margin:5px 0 0;color:#d7e3df;font-size:13px}#aiStoryStatus{display:block;margin-top:10px;line-height:1.5}
