@@ -543,6 +543,70 @@
     $("musicVolumeValue").textContent = $("musicVolume").value + "%";
   });
 
+
+  async function generateAiStory() {
+    const idea = $("scriptInput").value.trim();
+    const status = $("aiStoryStatus");
+    const button = $("aiStoryBtn");
+
+    if (!idea) {
+      alert("Bro, enter a story idea first.");
+      return;
+    }
+
+    button.disabled = true;
+    status.textContent = "AHM Director is writing your story and planning its scenes…";
+
+    try {
+      const response = await fetch("/api/story/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea, targetDuration: "natural, 30 to 120 seconds" })
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok || !data.story) {
+        throw new Error(data.error || "Story planning failed. Please try again.");
+      }
+
+      const story = data.story;
+      $("titleInput").value = story.title || "AHM Story";
+      $("scriptInput").value = story.narration || idea;
+
+      state.scenes = (story.scenes || []).map((scene, index) => ({
+        id: index + 1,
+        caption: scene.narration || scene.action || "",
+        visualPrompt: scene.visualPrompt || scene.action || "",
+        imageFile: null,
+        imageUrl: null,
+        image: null,
+        start: scene.start,
+        end: scene.end,
+        camera: scene.camera || "",
+        action: scene.action || ""
+      }));
+
+      renderSceneCards();
+      drawScene(0, 0);
+      $("previewTitle").textContent = story.title || "Your AHM story";
+      $("previewCaption").textContent = `${state.scenes.length} AI-directed scenes · ${story.durationSec}s planned`;
+      status.textContent = `Story plan ready: ${state.scenes.length} scenes, ${story.durationSec} seconds. Video generation is not connected yet, so no video has been created.`;
+
+      const intro = document.createElement("div");
+      intro.className = "aiStorySummary";
+      intro.innerHTML = `<strong>AI Director · ${escapeHtml(story.title || "Untitled")}</strong><p>${escapeHtml(story.hook || "")}</p><p>${escapeHtml(story.kicker || "")}</p>`;
+      const existing = document.getElementById("aiStorySummary");
+      if (existing) existing.remove();
+      intro.id = "aiStorySummary";
+      status.insertAdjacentElement("afterend", intro);
+    } catch (error) {
+      status.textContent = error.message || "Could not generate the story.";
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  $("aiStoryBtn").addEventListener("click", generateAiStory);
   $("sceneBtn").addEventListener("click", buildScenes);
   $("previewBtn").addEventListener("click", previewMotion);
 
