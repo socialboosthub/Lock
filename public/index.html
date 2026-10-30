@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#101116">
-  <title>AHM Studio — Free Cinematic Story Editor</title>
+  <title>AHM Studio — AI Story Video Maker</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -12,20 +12,20 @@
     <div class="brandMark">AHM</div>
     <div>
       <div class="brand">AHM STUDIO</div>
-      <div class="tagline">AI STORY VIDEO MAKER · ZERO-COST EDITOR</div>
+      <div class="tagline">AI STORY VIDEO MAKER · FREE-FIRST</div>
     </div>
     <div class="freeBadge">$0 MODE</div>
   </header>
 
   <main class="layout">
     <section class="intro panel">
-      <div class="eyebrow">CREATE · DIRECT · EDIT</div>
+      <div class="eyebrow">CREATE · DIRECT · GENERATE</div>
       <h1>Turn your story into a cinematic video.</h1>
-      <p>Plan scenes, create visual prompts, animate images, add narration and subtitles, then export your video directly from your browser.</p>
+      <p>Write a story once. AHM's AI director plans the story, characters, scenes and cinematic video prompts. Automatic video generation is being connected next.</p>
 
       <div class="notice">
-        <strong>Free mode:</strong>
-        This version does not use paid AI APIs. You supply images and narration created with available free tools, and AHM assembles them into a video.
+        <strong>Free-first development:</strong>
+        Story planning is connected to Gemini. Real AI video generation and automatic voice production are still being integrated; this page will clearly show what is and is not ready.
       </div>
 
       <div class="toolLinks">
@@ -54,9 +54,10 @@
         placeholder="Paste your complete story here. Separate important moments into sentences or paragraphs."></textarea>
 
       <div class="row wrap">
+        <button id="aiStoryBtn" class="primary">Generate story with AI</button>
         <button id="sceneBtn" class="secondary">Build scene plan</button>
-        <span class="hint">The scene planner works without an API key.</span>
       </div>
+      <p id="aiStoryStatus" class="hint" role="status">AI story planning uses your secure Gemini key. Video generation is a separate stage and is not connected yet.</p>
 
       <label class="uploadBox" for="voiceFile">
         <span class="uploadIcon">🎙️</span>
@@ -84,7 +85,7 @@
         <span class="step">02</span>
         <div>
           <h2>AI scene director</h2>
-          <p>Generate image prompts and upload one image for each scene.</p>
+          <p>Review the AI director's scenes and continuity instructions. Automatic visual generation is the next integration.</p>
         </div>
       </div>
 
@@ -121,7 +122,7 @@
         <span class="step">03</span>
         <div>
           <h2>Render your video</h2>
-          <p>Combine your scenes, animated camera movement, subtitles and audio.</p>
+          <p>The final renderer will combine generated video clips, narration, subtitles, music and sound effects.</p>
         </div>
       </div>
 
@@ -191,7 +192,7 @@
       <button id="clearHistoryBtn" class="textButton">Clear local history</button>
     </section>
 
-    <footer>AHM STUDIO · ZERO-COST EDITOR · NO RUNPOD · NO PAID API KEYS</footer>
+    <footer>AHM STUDIO · FREE-FIRST AI STORY VIDEO MAKER</footer>
   </main>
 
   <script src="/app.js"></script>
