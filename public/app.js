@@ -550,18 +550,18 @@
   function buildContinuityPrompt(scene, story) {
     const cast = (story.characters || [])
       .filter(character => !(scene.characters || []).length || scene.characters.includes(character.id))
-      .map(character => character.name + ": " + character.description).join("\\n");
+      .map(character => character.name + ": " + character.description).join("\n");
     const props = (story.props || [])
       .filter(prop => !(scene.props || []).length || scene.props.includes(prop.id))
-      .map(prop => prop.name + ": " + prop.description).join("\\n");
+      .map(prop => prop.name + ": " + prop.description).join("\n");
     const places = (story.environments || [])
       .filter(place => !scene.environment || place.id === scene.environment)
-      .map(place => place.name + ": " + place.description).join("\\n");
-    return [scene.visualPrompt || scene.action || "", cast && "LOCKED CHARACTER DESIGNS (do not alter):\\n" + cast,
-      places && "LOCKED ENVIRONMENT:\\n" + places, props && "LOCKED PROPS / CONTINUITY:\\n" + props,
+      .map(place => place.name + ": " + place.description).join("\n");
+    return [scene.visualPrompt || scene.action || "", cast && "LOCKED CHARACTER DESIGNS (do not alter):\n" + cast,
+      places && "LOCKED ENVIRONMENT:\n" + places, props && "LOCKED PROPS / CONTINUITY:\n" + props,
       "SHOT: " + (scene.camera || "cinematic motivated camera"), "ACTION: " + (scene.action || ""),
       "Vertical 9:16 stylized 3D animation, maintain exact continuity. No text, captions, logos or watermark."]
-      .filter(Boolean).join("\\n\\n");
+      .filter(Boolean).join("\n\n");
   }
 
   function renderDirectorBible(story) {
