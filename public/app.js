@@ -623,7 +623,17 @@
 
       $("titleInput").value = story.title || "AHM Story";
       $("scriptInput").value = story.narration || idea;
-      state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [] };\n      const sceneCount = (story.scenes || []).length;\n      const countSelect = $("sceneCount");\n      if (sceneCount && !Array.from(countSelect.options).some(option => Number(option.value) === sceneCount)) {\n        const option = document.createElement("option"); option.value = String(sceneCount); option.textContent = String(sceneCount); countSelect.appendChild(option);\n      }\n      if (sceneCount) countSelect.value = String(sceneCount);\n      state.scenes = (story.scenes || []).map((scene, index) => ({
+      state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [] };
+      const sceneCount = (story.scenes || []).length;
+      const countSelect = $("sceneCount");
+      if (sceneCount && !Array.from(countSelect.options).some(option => Number(option.value) === sceneCount)) {
+        const option = document.createElement("option");
+        option.value = String(sceneCount);
+        option.textContent = String(sceneCount);
+        countSelect.appendChild(option);
+      }
+      if (sceneCount) countSelect.value = String(sceneCount);
+      state.scenes = (story.scenes || []).map((scene, index) => ({
         id: index + 1,
         caption: scene.narration || scene.action || "",
         visualPrompt: buildContinuityPrompt(scene, story),
@@ -643,7 +653,7 @@
       const existing = document.getElementById("aiStorySummary");
       if (existing) existing.remove();
       intro.id = "aiStorySummary";
-      status.insertAdjacentElement("afterend", intro);
+      status.insertAdjacentElement("afterend", intro);\n      renderDirectorBible(story);
     } catch (error) {
       status.textContent = error.message || "Could not generate the story.";
     } finally {
