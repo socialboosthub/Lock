@@ -186,8 +186,10 @@
             data-caption="${scene.id}"
           >${escapeHtml(scene.caption)}</textarea>
 
+          <div class="sceneMeta"><span>⏱ ${Number.isFinite(Number(scene.start)) ? scene.start : "—"}–${Number.isFinite(Number(scene.end)) ? scene.end : "—"}s</span><span>🎥 ${escapeHtml(scene.camera || "Director camera plan")}</span></div>
+          <p class="sceneAction">${escapeHtml(scene.action || "")}</p>
           <div class="prompt">
-            <strong>IMAGE PROMPT:</strong>
+            <strong>DIRECTOR VISUAL PROMPT:</strong>
             ${escapeHtml(scene.visualPrompt)}
           </div>
 
