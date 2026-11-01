@@ -662,7 +662,8 @@
       const existing = document.getElementById("aiStorySummary");
       if (existing) existing.remove();
       intro.id = "aiStorySummary";
-      status.insertAdjacentElement("afterend", intro);\n      renderDirectorBible(story);
+      status.insertAdjacentElement("afterend", intro);
+      renderDirectorBible(story);
     } catch (error) {
       status.textContent = error.message || "Could not generate the story.";
     } finally {
