@@ -615,8 +615,10 @@
       status.textContent = "AHM Director is writing your story…";
       const deadline = Date.now() + 150000;
       let story = null;
+      let pollCount = 0;
       while (Date.now() < deadline) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, pollCount < 8 ? 1200 : pollCount < 20 ? 1800 : 2500));
+        pollCount += 1;
         const checkResponse = await fetch("/api/story/plan/" + encodeURIComponent(started.jobId));
         const data = await checkResponse.json();
         if (!checkResponse.ok || !data.ok) {
@@ -626,7 +628,7 @@
           story = data.story;
           break;
         }
-        status.textContent = "AHM Director is planning scenes… Please keep this page open.";
+        status.textContent = "AHM Director is planning your story… " + Math.round((Date.now() - (deadline - 150000)) / 1000) + "s elapsed. Please keep this page open.";
       }
       if (!story) throw new Error("The story is taking longer than expected. Your request may still be processing; please try again shortly.");
 
