@@ -607,3 +607,16 @@ footer {
 
 /* AI story director result */
 .aiStorySummary{margin:12px 0 4px;padding:14px;border:1px solid #3c5d57;border-radius:12px;background:#13211f}.aiStorySummary strong{display:block;color:var(--cyan);margin-bottom:6px}.aiStorySummary p{margin:5px 0 0;color:#d7e3df;font-size:13px}#aiStoryStatus{display:block;margin-top:10px;line-height:1.5}
+
+
+/* Director bible, continuity and cinematic shot notes */
+.directorBible{margin:12px 0;padding:15px;border:1px solid #66552f;border-radius:14px;background:linear-gradient(145deg,#211d14,#14171b)}
+.bibleHeading{display:flex;justify-content:space-between;gap:10px;align-items:center;color:var(--gold);font-size:12px;letter-spacing:1px}
+.bibleHeading span{font-size:10px;color:#9be0bc;border:1px solid #365b45;padding:4px 8px;border-radius:99px;letter-spacing:0}
+.bibleGroup{margin-top:12px;padding-top:10px;border-top:1px solid #3a3427}
+.bibleGroup h3{margin:0 0 6px;font-size:11px;letter-spacing:1px;color:var(--cyan)}
+.bibleGroup p{font-size:12px;line-height:1.5;margin:5px 0;color:#d5d8df}
+.bibleGroup b{color:#fff}
+.sceneMeta{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;font-size:10px;color:var(--cyan)}
+.sceneMeta span{padding:4px 7px;background:#172527;border-radius:6px}
+.sceneAction{font-size:12px;color:#e4d4b4;margin:6px 0!important}
