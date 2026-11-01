@@ -5,6 +5,7 @@
 
   const state = {
     scenes: [],
+    storyBible: null,
     voiceUrl: null,
     musicUrl: null,
     voiceFile: null,
@@ -544,6 +545,41 @@
   });
 
 
+  function buildContinuityPrompt(scene, story) {
+    const cast = (story.characters || [])
+      .filter(character => !(scene.characters || []).length || scene.characters.includes(character.id))
+      .map(character => character.name + ": " + character.description).join("\\n");
+    const props = (story.props || [])
+      .filter(prop => !(scene.props || []).length || scene.props.includes(prop.id))
+      .map(prop => prop.name + ": " + prop.description).join("\\n");
+    const places = (story.environments || [])
+      .filter(place => !scene.environment || place.id === scene.environment)
+      .map(place => place.name + ": " + place.description).join("\\n");
+    return [scene.visualPrompt || scene.action || "", cast && "LOCKED CHARACTER DESIGNS (do not alter):\\n" + cast,
+      places && "LOCKED ENVIRONMENT:\\n" + places, props && "LOCKED PROPS / CONTINUITY:\\n" + props,
+      "SHOT: " + (scene.camera || "cinematic motivated camera"), "ACTION: " + (scene.action || ""),
+      "Vertical 9:16 stylized 3D animation, maintain exact continuity. No text, captions, logos or watermark."]
+      .filter(Boolean).join("\\n\\n");
+  }
+
+  function renderDirectorBible(story) {
+    const items = [
+      ["CAST & CHARACTER LOCK", story.characters || [], item => item.name + " — " + item.description],
+      ["WORLD & LOCATIONS", story.environments || [], item => item.name + " — " + item.description],
+      ["IMPORTANT PROPS", story.props || [], item => item.name + " — " + item.description]
+    ];
+    let panel = document.getElementById("directorBible");
+    if (panel) panel.remove();
+    panel = document.createElement("section");
+    panel.id = "directorBible";
+    panel.className = "directorBible";
+    panel.innerHTML = '<div class="bibleHeading"><strong>AHM DIRECTOR BIBLE</strong><span>Continuity locked</span></div>' +
+      items.map(([heading, values, render]) => '<div class="bibleGroup"><h3>' + heading + '</h3>' +
+        (values.length ? values.map(item => '<p><b>' + escapeHtml(item.name) + '</b> ' + escapeHtml(item.description || "") + '</p>').join("") : '<p>None specified</p>') + '</div>').join("");
+    const summary = document.getElementById("aiStorySummary");
+    if (summary) summary.insertAdjacentElement("afterend", panel);
+  }
+
   async function generateAiStory() {
     const idea = $("scriptInput").value.trim();
     const status = $("aiStoryStatus");
@@ -585,13 +621,13 @@
 
       $("titleInput").value = story.title || "AHM Story";
       $("scriptInput").value = story.narration || idea;
-      state.scenes = (story.scenes || []).map((scene, index) => ({
+      state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [] };\n      const sceneCount = (story.scenes || []).length;\n      const countSelect = $("sceneCount");\n      if (sceneCount && !Array.from(countSelect.options).some(option => Number(option.value) === sceneCount)) {\n        const option = document.createElement("option"); option.value = String(sceneCount); option.textContent = String(sceneCount); countSelect.appendChild(option);\n      }\n      if (sceneCount) countSelect.value = String(sceneCount);\n      state.scenes = (story.scenes || []).map((scene, index) => ({
         id: index + 1,
         caption: scene.narration || scene.action || "",
-        visualPrompt: scene.visualPrompt || scene.action || "",
+        visualPrompt: buildContinuityPrompt(scene, story),
         imageFile: null, imageUrl: null, image: null,
         start: scene.start, end: scene.end,
-        camera: scene.camera || "", action: scene.action || ""
+        camera: scene.camera || "", action: scene.action || "", transition: scene.transition || "", sound: scene.sound || "", characters: scene.characters || [], environment: scene.environment || "", props: scene.props || []
       }));
       renderSceneCards();
       drawScene(0, 0);
