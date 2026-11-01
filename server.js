@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
-const { generateStoryPackage, isStoryProviderConfigured } = require("./lib/providers/llm");
+const { startStoryGeneration, getStoryGeneration, isStoryProviderConfigured } = require("./lib/providers/llm");
 
 const app = express();
 app.disable("x-powered-by");
@@ -24,25 +24,32 @@ app.post("/api/story/plan", async (req, res) => {
   try {
     const idea = typeof req.body?.idea === "string" ? req.body.idea.trim() : "";
     const targetDuration = typeof req.body?.targetDuration === "string"
-      ? req.body.targetDuration.slice(0, 40)
-      : "natural";
-
+      ? req.body.targetDuration.slice(0, 40) : "natural";
     if (idea.length > 6000) {
       return res.status(400).json({ error: "Please keep your story idea under 6,000 characters." });
     }
+    const job = await startStoryGeneration(idea, targetDuration);
+    return res.status(202).json({ ok: true, jobId: job.id, status: job.status });
+  } catch (error) {
+    const status = error.code === "STORY_PROVIDER_NOT_CONFIGURED" ? 503 : 502;
+    console.error("AHM story job start failed:", error.message);
+    return res.status(status).json({ error: error.message || "Could not start story planning." });
+  }
+});
 
-    const story = await generateStoryPackage(idea, targetDuration);
+app.get("/api/story/plan/:jobId", async (req, res) => {
+  try {
+    const result = await getStoryGeneration(req.params.jobId);
+    if (result.status !== "completed") return res.json({ ok: true, status: result.status });
     return res.json({
       ok: true,
-      story,
-      video: { status: "not_started", message: "Story planning is ready. A real video-generation provider is not connected yet." }
+      status: "completed",
+      story: result.story,
+      video: { status: "not_started", message: "Story planning is ready. Video generation is not connected yet." }
     });
   } catch (error) {
-    const notConfigured = error.code === "STORY_PROVIDER_NOT_CONFIGURED";
-    const message = notConfigured
-      ? error.message
-      : (error.message || "Story planning failed. Please try again.");
-    return res.status(notConfigured ? 503 : 502).json({ error: message });
+    console.error("AHM story job check failed:", error.message);
+    return res.status(502).json({ error: error.message || "Could not check story generation." });
   }
 });
 
