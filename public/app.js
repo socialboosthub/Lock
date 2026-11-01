@@ -548,44 +548,51 @@
     const idea = $("scriptInput").value.trim();
     const status = $("aiStoryStatus");
     const button = $("aiStoryBtn");
-
     if (!idea) {
       alert("Bro, enter a story idea first.");
       return;
     }
-
     button.disabled = true;
-    status.textContent = "AHM Director is writing your story and planning its scenes…";
-
+    status.textContent = "Starting AHM Director…";
     try {
-      const response = await fetch("/api/story/plan", {
+      const startResponse = await fetch("/api/story/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea, targetDuration: "natural, 30 to 120 seconds" })
       });
-      const data = await response.json();
-
-      if (!response.ok || !data.ok || !data.story) {
-        throw new Error(data.error || "Story planning failed. Please try again.");
+      const started = await startResponse.json();
+      if (!startResponse.ok || !started.ok || !started.jobId) {
+        throw new Error(started.error || "Could not start story planning.");
       }
 
-      const story = data.story;
+      status.textContent = "AHM Director is writing your story…";
+      const deadline = Date.now() + 150000;
+      let story = null;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const checkResponse = await fetch("/api/story/plan/" + encodeURIComponent(started.jobId));
+        const data = await checkResponse.json();
+        if (!checkResponse.ok || !data.ok) {
+          throw new Error(data.error || "Story planning failed.");
+        }
+        if (data.status === "completed" && data.story) {
+          story = data.story;
+          break;
+        }
+        status.textContent = "AHM Director is planning scenes… Please keep this page open.";
+      }
+      if (!story) throw new Error("The story is taking longer than expected. Your request may still be processing; please try again shortly.");
+
       $("titleInput").value = story.title || "AHM Story";
       $("scriptInput").value = story.narration || idea;
-
       state.scenes = (story.scenes || []).map((scene, index) => ({
         id: index + 1,
         caption: scene.narration || scene.action || "",
         visualPrompt: scene.visualPrompt || scene.action || "",
-        imageFile: null,
-        imageUrl: null,
-        image: null,
-        start: scene.start,
-        end: scene.end,
-        camera: scene.camera || "",
-        action: scene.action || ""
+        imageFile: null, imageUrl: null, image: null,
+        start: scene.start, end: scene.end,
+        camera: scene.camera || "", action: scene.action || ""
       }));
-
       renderSceneCards();
       drawScene(0, 0);
       $("previewTitle").textContent = story.title || "Your AHM story";
