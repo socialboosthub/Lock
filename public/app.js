@@ -566,9 +566,9 @@
 
   function renderDirectorBible(story) {
     const items = [
-      ["CAST & CHARACTER LOCK", story.characters || [], item => item.name + " — " + item.description],
-      ["WORLD & LOCATIONS", story.environments || [], item => item.name + " — " + item.description],
-      ["IMPORTANT PROPS", story.props || [], item => item.name + " — " + item.description]
+      ["CAST & CHARACTER LOCK", story.characters || []],
+      ["WORLD & LOCATIONS", story.environments || []],
+      ["IMPORTANT PROPS & PROP CONTINUITY", story.props || []]
     ];
     let panel = document.getElementById("directorBible");
     if (panel) panel.remove();
@@ -576,8 +576,17 @@
     panel.id = "directorBible";
     panel.className = "directorBible";
     panel.innerHTML = '<div class="bibleHeading"><strong>AHM DIRECTOR BIBLE</strong><span>Continuity locked</span></div>' +
-      items.map(([heading, values, render]) => '<div class="bibleGroup"><h3>' + heading + '</h3>' +
-        (values.length ? values.map(item => '<p><b>' + escapeHtml(item.name) + '</b> ' + escapeHtml(item.description || "") + '</p>').join("") : '<p>None specified</p>') + '</div>').join("");
+      items.map(([heading, values]) => '<div class="bibleGroup"><h3>' + heading + '</h3>' +
+        (values.length ? values.map(item => '<p><b>' + escapeHtml(item.name || "Unnamed") + '</b> ' +
+          escapeHtml(item.description || "") +
+          (item.voice ? '<br><b>Voice:</b> ' + escapeHtml(item.voice) : "") +
+          (item.arc ? '<br><b>Arc:</b> ' + escapeHtml(item.arc) : "") + '</p>').join("") : '<p>None specified</p>') + '</div>').join("") +
+      (story.storyArc ? '<div class="bibleGroup"><h3>STORY ENGINE · SETUP → PAYOFF</h3>' +
+        ['goal','stakes','turningPoint','payoff'].map(key => story.storyArc[key] ?
+          '<p><b>' + ({goal:'Goal',stakes:'Stakes',turningPoint:'Turning point',payoff:'Payoff'}[key]) +
+          ':</b> ' + escapeHtml(story.storyArc[key]) + '</p>' : '').join("") + '</div>' : '') +
+      (story.continuityNotes?.length ? '<div class="bibleGroup"><h3>CONTINUITY CHECKLIST</h3>' +
+        story.continuityNotes.map(note => '<p>• ' + escapeHtml(note) + '</p>').join("") + '</div>' : '');
     const summary = document.getElementById("aiStorySummary");
     if (summary) summary.insertAdjacentElement("afterend", panel);
   }
