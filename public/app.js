@@ -411,7 +411,7 @@
       ? scene.caption
       : subtitleOverride;
 
-    drawSubtitle(subtitle, width, height);
+    drawSubtitle(getSubtitlePhrase(subtitle, progress), width, height);
 
     ctx.fillStyle = "rgba(255,255,255,.85)";
     ctx.fillRect(
@@ -422,56 +422,79 @@
     );
   }
 
-  function drawSubtitle(text, width, height) {
-    const size = $("subtitleSize").value;
-    const font = size === "small" ? 19 : size === "large" ? 29 : 24;
-
-    ctx.font = `800 ${font}px system-ui`;
-    ctx.textAlign = "center";
-
-    const words = String(text || "").split(/\s+/);
-    const maxWidth = width - 42;
-    const lines = [];
-    let line = "";
+  // Break narration into short, readable caption beats like fast-paced short-form videos.
+  function getSubtitlePhrase(text, progress = 0) {
+    const words = String(text || "").trim().match(/\\S+/g) || [];
+    if (!words.length) return "";
+    const phrases = [];
+    let current = [];
 
     for (const word of words) {
-      const test = line ? line + " " + word : word;
+      current.push(word);
+      const endsThought = /[.!?…][”"'’)]?$/.test(word);
+      if (current.length >= 4 || (endsThought && current.length >= 2)) {
+        phrases.push(current.join(" "));
+        current = [];
+      }
+    }
+    if (current.length) phrases.push(current.join(" "));
+    if (phrases.length <= 1) return phrases[0] || "";
 
-      if (ctx.measureText(test).width > maxWidth && line) {
+    const totalWords = words.length;
+    const target = Math.min(0.999, Math.max(0, Number(progress) || 0)) * totalWords;
+    let elapsed = 0;
+    for (const phrase of phrases) {
+      const count = phrase.match(/\\S+/g)?.length || 1;
+      if (target < elapsed + count) return phrase;
+      elapsed += count;
+    }
+    return phrases[phrases.length - 1];
+  }
+
+  function drawSubtitle(text, width, height) {
+    const size = $("subtitleSize").value;
+    const font = size === "small" ? 24 : size === "large" ? 38 : 32;
+    const maxWidth = width - 58;
+
+    ctx.save();
+    ctx.font = `900 ${font}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+
+    // Keep each timed phrase compact; wrap only when a phrase is unusually long.
+    const words = String(text || "").split(/\\s+/).filter(Boolean);
+    const lines = [];
+    let line = "";
+    for (const word of words) {
+      const candidate = line ? line + " " + word : word;
+      if (ctx.measureText(candidate).width > maxWidth && line) {
         lines.push(line);
         line = word;
       } else {
-        line = test;
+        line = candidate;
       }
     }
-
     if (line) lines.push(line);
 
-    const visible = lines.slice(-4);
-    const lineHeight = font * 1.22;
-    const blockHeight = visible.length * lineHeight + 20;
-    const y = height - 76 - blockHeight;
+    const lineHeight = font * 1.16;
+    const centerY = height * 0.795;
+    const firstY = centerY - ((lines.length - 1) * lineHeight) / 2;
 
-    ctx.fillStyle = "rgba(0,0,0,.62)";
-    roundRect(ctx, 15, y, width - 30, blockHeight + 12, 12);
-    ctx.fill();
+    ctx.shadowColor = "rgba(0,0,0,.9)";
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 2;
+    ctx.lineWidth = Math.max(5, font * 0.17);
+    ctx.strokeStyle = "#050505";
+    ctx.fillStyle = "#ffffff";
 
-    ctx.strokeStyle = "rgba(255,255,255,.22)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = "#fff";
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#000";
-    ctx.textBaseline = "middle";
-
-    visible.forEach((lineText, index) => {
-      const lineY = y + 17 + lineHeight * (index + 0.5);
-      ctx.strokeText(lineText, width / 2, lineY, maxWidth - 14);
-      ctx.fillText(lineText, width / 2, lineY, maxWidth - 14);
+    lines.forEach((captionLine, index) => {
+      const y = firstY + index * lineHeight;
+      ctx.strokeText(captionLine, width / 2, y, maxWidth);
+      ctx.fillText(captionLine, width / 2, y, maxWidth);
     });
-
-    ctx.textBaseline = "alphabetic";
+    ctx.restore();
   }
 
   function roundRect(context, x, y, width, height, radius) {
