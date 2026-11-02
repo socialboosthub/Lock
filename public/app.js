@@ -424,7 +424,7 @@
 
   // Break narration into short, readable caption beats like fast-paced short-form videos.
   function getSubtitlePhrase(text, progress = 0) {
-    const words = String(text || "").trim().match(/\\S+/g) || [];
+    const words = String(text || "").trim().match(/\S+/g) || [];
     if (!words.length) return "";
     const phrases = [];
     let current = [];
@@ -444,7 +444,7 @@
     const target = Math.min(0.999, Math.max(0, Number(progress) || 0)) * totalWords;
     let elapsed = 0;
     for (const phrase of phrases) {
-      const count = phrase.match(/\\S+/g)?.length || 1;
+      const count = phrase.match(/\S+/g)?.length || 1;
       if (target < elapsed + count) return phrase;
       elapsed += count;
     }
@@ -463,7 +463,7 @@
     ctx.lineJoin = "round";
 
     // Keep each timed phrase compact; wrap only when a phrase is unusually long.
-    const words = String(text || "").split(/\\s+/).filter(Boolean);
+    const words = String(text || "").split(/\s+/).filter(Boolean);
     const lines = [];
     let line = "";
     for (const word of words) {
