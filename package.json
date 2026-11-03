@@ -5,7 +5,8 @@
   "description": "AHM Studio browser-based cinematic story editor",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
