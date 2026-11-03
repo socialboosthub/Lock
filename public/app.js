@@ -95,24 +95,24 @@
   // Split only at sentence boundaries and keep closing quotation marks attached.
   // A dialogue exclamation followed by "she said" remains part of the same sentence.
   function splitSentences(text) {
-    const source = String(text || "").replace(/\\s+/g, " ").trim();
+    const source = String(text || "").replace(/\s+/g, " ").trim();
     if (!source) return [];
     const sentences = [];
     let start = 0;
     for (let i = 0; i < source.length; i++) {
       if (!/[.!?…]/.test(source[i])) continue;
       let end = i + 1;
-      while (end < source.length && /["'”’»）)\\]]/.test(source[end])) end++;
+      while (end < source.length && /["'”’»）)\]]/.test(source[end])) end++;
       const rest = source.slice(end);
-      const next = rest.match(/^\\s+([\\p{L}])/u);
+      const next = rest.match(/^\s+([\p{L}])/u);
       const nextWord = next?.[1] || "";
       // "My son!" she cried is one sentence, not a quote-only fragment.
-      if (/[!?]/.test(source[i]) && nextWord && /\\p{Ll}/u.test(nextWord)) continue;
-      if (end === source.length || /^\\s/.test(source[end])) {
+      if (/[!?]/.test(source[i]) && nextWord && /\p{Ll}/u.test(nextWord)) continue;
+      if (end === source.length || /^\s/.test(source[end])) {
         const part = source.slice(start, end).trim();
         if (part) sentences.push(part);
         start = end;
-        while (start < source.length && /\\s/.test(source[start])) start++;
+        while (start < source.length && /\s/.test(source[start])) start++;
         i = start - 1;
       }
     }
@@ -122,9 +122,9 @@
   }
 
   function estimateScenePlan(sentences) {
-    const totalWords = sentences.join(" ").match(/\\S+/g)?.length || 1;
+    const totalWords = sentences.join(" ").match(/\S+/g)?.length || 1;
     const durationSec = Math.max(30, Math.min(120, Math.round(totalWords / 2.35)));
-    const weights = sentences.map(line => Math.max(1, line.match(/\\S+/g)?.length || 1));
+    const weights = sentences.map(line => Math.max(1, line.match(/\S+/g)?.length || 1));
     const totalWeight = weights.reduce((sum, value) => sum + value, 0);
     let cursor = 0;
     return sentences.map((line, index) => {
@@ -173,7 +173,7 @@
   }
 
   function splitSubtitlePhrasesForUI(text) {
-    const words = String(text || "").trim().match(/\\S+/g) || [];
+    const words = String(text || "").trim().match(/\S+/g) || [];
     const phrases = [];
     let line = [];
     words.forEach(word => {
