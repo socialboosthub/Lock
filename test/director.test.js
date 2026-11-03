@@ -74,3 +74,26 @@ test("Director never leaves a punctuation-only scene", () => {
   assert.equal(story.scenes.length, 1);
   assert.equal(story.scenes[0].narration, "He ran home.");
 });
+
+
+test("Director preserves a complete spoken quotation when Gemini splits it", () => {
+  const story = normalizeStoryPackage({
+    title: "The Boy Who Sold His Shadow",
+    durationSec: 45,
+    scenes: [
+      { narration: "Noah held his mother close and whispered: “Mother, I learned something." },
+      { narration: "Some things are worth more than all the gold in the world.”" }
+    ]
+  });
+  assert.equal(story.scenes.length, 1);
+  assert.match(story.scenes[0].narration, /^Noah held/);
+  assert.match(story.scenes[0].narration, /world.”$/);
+});
+
+test("Director subtitle splitting counts real words and preserves the original text", () => {
+  const { splitSubtitlePhrases } = require("../lib/providers/llm");
+  const source = "Noah ran home. His mother opened the door.";
+  const phrases = splitSubtitlePhrases(source);
+  assert.ok(phrases.length >= 2);
+  assert.equal(phrases.join(" "), source);
+});
