@@ -186,7 +186,8 @@
             data-caption="${scene.id}"
           >${escapeHtml(scene.caption)}</textarea>
 
-          <div class="sceneMeta"><span>⏱ ${Number.isFinite(Number(scene.start)) ? scene.start : "—"}–${Number.isFinite(Number(scene.end)) ? scene.end : "—"}s</span><span>🎥 ${escapeHtml(scene.camera || "Director camera plan")}</span></div>
+          <div class="sceneMeta"><span>⏱ ${Number.isFinite(Number(scene.start)) && Number.isFinite(Number(scene.end)) ? Number(scene.start).toFixed(1) + "–" + Number(scene.end).toFixed(1) + "s · " + (Number(scene.end) - Number(scene.start)).toFixed(1) + "s" : "Timing estimate unavailable"}</span><span>🎥 ${escapeHtml(scene.camera || "Director camera plan")}</span></div>
+          ${scene.subtitlePhrases?.length ? '<div class="subtitlePhrases"><strong>SUBTITLE BEATS · ESTIMATED</strong><div>' + scene.subtitlePhrases.map(phrase => '<span>' + escapeHtml(phrase) + '</span>').join('') + '</div></div>' : ''}
           <p class="sceneAction">${escapeHtml(scene.action || "")}</p>
           <div class="prompt">
             <strong>DIRECTOR VISUAL PROMPT:</strong>
@@ -580,9 +581,9 @@
     const places = (story.environments || [])
       .filter(place => !scene.environment || place.id === scene.environment)
       .map(place => place.name + ": " + place.description).join("\n");
-    return [scene.visualPrompt || scene.action || "", cast && "LOCKED CHARACTER DESIGNS (do not alter):\n" + cast,
+    return [scene.visualPrompt || scene.action || "", scene.emotion && "EMOTION / PERFORMANCE:\n" + scene.emotion, cast && "LOCKED CHARACTER DESIGNS (do not alter):\n" + cast,
       places && "LOCKED ENVIRONMENT:\n" + places, props && "LOCKED PROPS / CONTINUITY:\n" + props,
-      "SHOT: " + (scene.camera || "cinematic motivated camera"), "ACTION: " + (scene.action || ""),
+      "SHOT: " + (scene.camera || scene.shot || "cinematic motivated camera"), "ACTION: " + (scene.action || ""), scene.transition && "TRANSITION: " + scene.transition, scene.sound && "SOUND DESIGN: " + scene.sound,
       "Vertical 9:16 stylized 3D animation, maintain exact continuity. No text, captions, logos or watermark."]
       .filter(Boolean).join("\n\n");
   }
@@ -657,7 +658,7 @@
 
       $("titleInput").value = story.title || "AHM Story";
       $("scriptInput").value = story.narration || idea;
-      state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [] };
+      state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [], continuityNotes: story.continuityNotes || [], storyArc: story.storyArc || null, titleFit: story.titleFit || null };
       const sceneCount = (story.scenes || []).length;
       const countSelect = $("sceneCount");
       if (sceneCount && !Array.from(countSelect.options).some(option => Number(option.value) === sceneCount)) {
@@ -670,20 +671,22 @@
       state.scenes = (story.scenes || []).map((scene, index) => ({
         id: index + 1,
         caption: scene.narration || scene.action || "",
+        subtitlePhrases: scene.subtitlePhrases || [],
         visualPrompt: buildContinuityPrompt(scene, story),
         imageFile: null, imageUrl: null, image: null,
-        start: scene.start, end: scene.end,
+        start: scene.start, end: scene.end, durationSec: scene.durationSec,
+        emotion: scene.emotion || "", dialogue: scene.dialogue || [],
         camera: scene.camera || "", action: scene.action || "", transition: scene.transition || "", sound: scene.sound || "", characters: scene.characters || [], environment: scene.environment || "", props: scene.props || []
       }));
       renderSceneCards();
       drawScene(0, 0);
       $("previewTitle").textContent = story.title || "Your AHM story";
       $("previewCaption").textContent = `${state.scenes.length} AI-directed scenes · ${story.durationSec}s planned`;
-      status.textContent = `Story plan ready: ${state.scenes.length} scenes, ${story.durationSec} seconds. Video generation is not connected yet, so no video has been created.`;
+      status.textContent = `Story plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Subtitle phrase timing is provisional until narration audio is added. No video has been created.`;
 
       const intro = document.createElement("div");
       intro.className = "aiStorySummary";
-      intro.innerHTML = `<strong>AI Director · ${escapeHtml(story.title || "Untitled")}</strong><p>${escapeHtml(story.hook || "")}</p><p>${escapeHtml(story.kicker || "")}</p>`;
+      intro.innerHTML = `<strong>AI Director · ${escapeHtml(story.title || "Untitled")}</strong><p>${escapeHtml(story.hook || "")}</p><p>${escapeHtml(story.kicker || "")}</p>${story.titleFit?.matchesStory === false ? '<p class="directorWarning"><b>Title check:</b> ' + escapeHtml(story.titleFit.reason || "The title may not match the story. Review it before continuing.") + '</p>' : ''}<p class="directorTimingNote">Scene timings and subtitle beats are estimates for planning only. Once narration is added, final subtitle timing must follow the actual audio.</p>`;
       const existing = document.getElementById("aiStorySummary");
       if (existing) existing.remove();
       intro.id = "aiStorySummary";
