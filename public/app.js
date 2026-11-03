@@ -99,15 +99,21 @@
     if (!source) return [];
     const sentences = [];
     let start = 0;
+    let curlyQuoteOpen = false;
+    let straightQuoteOpen = false;
     for (let i = 0; i < source.length; i++) {
-      if (!/[.!?…]/.test(source[i])) continue;
+      const char = source[i];
+      if (char === "“") curlyQuoteOpen = true;
+      else if (char === "”") curlyQuoteOpen = false;
+      else if (char === '"') straightQuoteOpen = !straightQuoteOpen;
+      if (!/[.!?…]/.test(char)) continue;
+      if (curlyQuoteOpen || straightQuoteOpen) continue;
       let end = i + 1;
       while (end < source.length && /["'”’»）)\]]/.test(source[end])) end++;
       const rest = source.slice(end);
       const next = rest.match(/^\s+([\p{L}])/u);
       const nextWord = next?.[1] || "";
-      // "My son!" she cried is one sentence, not a quote-only fragment.
-      if (/[!?]/.test(source[i]) && nextWord && /\p{Ll}/u.test(nextWord)) continue;
+      if (/[!?]/.test(char) && nextWord && /\p{Ll}/u.test(nextWord)) continue;
       if (end === source.length || /^\s/.test(source[end])) {
         const part = source.slice(start, end).trim();
         if (part) sentences.push(part);
