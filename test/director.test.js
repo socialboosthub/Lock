@@ -43,3 +43,34 @@ test("Director clamps invalid duration to the supported 30–120 second range", 
   assert.equal(story.durationSec, 120);
   assert.equal(story.scenes[0].end, 120);
 });
+
+
+test("Director repairs dialogue split across scene boundaries", () => {
+  const story = normalizeStoryPackage({
+    title: "The Boy Who Sold His Shadow",
+    durationSec: 60,
+    scenes: [
+      { narration: "This time, when his mother opened the door, she immediately recognized him. “My son!" },
+      { narration: "” she cried, hugging him tightly." },
+      { narration: "Noah held her close and whispered: “Mother, I learned something. Some things are worth more than all the gold in the world." },
+      { narration: "”" }
+    ]
+  });
+  assert.equal(story.scenes.length, 2);
+  assert.equal(story.scenes[0].narration, "This time, when his mother opened the door, she immediately recognized him. “My son! ” she cried, hugging him tightly.");
+  assert.match(story.scenes[1].narration, /all the gold in the world\.”$/);
+  assert.ok(story.scenes.every(scene => scene.narration.trim().length > 1));
+});
+
+test("Director never leaves a punctuation-only scene", () => {
+  const story = normalizeStoryPackage({
+    title: "Test",
+    durationSec: 30,
+    scenes: [
+      { narration: "He ran home." },
+      { narration: "”" }
+    ]
+  });
+  assert.equal(story.scenes.length, 1);
+  assert.equal(story.scenes[0].narration, "He ran home.");
+});
