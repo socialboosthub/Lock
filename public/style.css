@@ -620,3 +620,46 @@ footer {
 .sceneMeta{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;font-size:10px;color:var(--cyan)}
 .sceneMeta span{padding:4px 7px;background:#172527;border-radius:6px}
 .sceneAction{font-size:12px;color:#e4d4b4;margin:6px 0!important}
+
+
+/* AHM Director V2 review details */
+.subtitlePhrases {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(228,191,104,.22);
+  border-radius: 12px;
+  background: rgba(228,191,104,.055);
+}
+.subtitlePhrases > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #e4bf68;
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+.subtitlePhrases > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.subtitlePhrases span {
+  display: inline-block;
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: #f4f1e9;
+  background: rgba(255,255,255,.08);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.directorWarning {
+  padding: 10px 12px;
+  border-left: 3px solid #e4bf68;
+  border-radius: 7px;
+  background: rgba(228,191,104,.1);
+  color: #f8dfaa;
+}
+.directorTimingNote {
+  color: #aeb8c7;
+  font-size: 12px;
+}
