@@ -92,67 +92,117 @@
       .replace(/^-|-$/g, "")
       .slice(0, 55) || "ahm-video";
 
+  // Split only at sentence boundaries and keep closing quotation marks attached.
+  // A dialogue exclamation followed by "she said" remains part of the same sentence.
   function splitSentences(text) {
-    return text
-      .replace(/\s+/g, " ")
-      .trim()
-      .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
-      ?.map(sentence => sentence.trim())
-      .filter(Boolean) || [];
+    const source = String(text || "").replace(/\\s+/g, " ").trim();
+    if (!source) return [];
+    const sentences = [];
+    let start = 0;
+    for (let i = 0; i < source.length; i++) {
+      if (!/[.!?…]/.test(source[i])) continue;
+      let end = i + 1;
+      while (end < source.length && /["'”’»）)\\]]/.test(source[end])) end++;
+      const rest = source.slice(end);
+      const next = rest.match(/^\\s+([\\p{L}])/u);
+      const nextWord = next?.[1] || "";
+      // "My son!" she cried is one sentence, not a quote-only fragment.
+      if (/[!?]/.test(source[i]) && nextWord && /\\p{Ll}/u.test(nextWord)) continue;
+      if (end === source.length || /^\\s/.test(source[end])) {
+        const part = source.slice(start, end).trim();
+        if (part) sentences.push(part);
+        start = end;
+        while (start < source.length && /\\s/.test(source[start])) start++;
+        i = start - 1;
+      }
+    }
+    const tail = source.slice(start).trim();
+    if (tail) sentences.push(tail);
+    return sentences.length ? sentences : [source];
+  }
+
+  function estimateScenePlan(sentences) {
+    const totalWords = sentences.join(" ").match(/\\S+/g)?.length || 1;
+    const durationSec = Math.max(30, Math.min(120, Math.round(totalWords / 2.35)));
+    const weights = sentences.map(line => Math.max(1, line.match(/\\S+/g)?.length || 1));
+    const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+    let cursor = 0;
+    return sentences.map((line, index) => {
+      const start = cursor;
+      const end = index === sentences.length - 1
+        ? durationSec
+        : Math.max(start + 1, Math.round(start + durationSec * weights[index] / totalWeight));
+      cursor = end;
+      return { start, end, durationSec: end - start };
+    });
   }
 
   function buildScenes() {
     const script = $("scriptInput").value.trim();
-
     if (!script) {
       alert("Bro, paste your story or narration first.");
       return;
     }
-
-    const count = Number($("sceneCount").value);
     const sentences = splitSentences(script);
-
-    const chunks = Array.from(
-      { length: Math.min(count, Math.max(1, sentences.length)) },
-      () => []
-    );
-
+    const requested = Math.max(1, Number($("sceneCount").value) || sentences.length);
+    const sceneTotal = Math.min(requested, sentences.length);
+    const chunks = Array.from({ length: sceneTotal }, () => []);
     sentences.forEach((sentence, index) => {
-      const target = Math.min(
-        chunks.length - 1,
-        Math.floor(index * chunks.length / sentences.length)
-      );
-
+      const target = Math.min(sceneTotal - 1, Math.floor(index * sceneTotal / sentences.length));
       chunks[target].push(sentence);
     });
-
     const title = $("titleInput").value.trim() || "Untitled AHM Story";
-
-    state.scenes = chunks.map((lines, index) => {
-      const narration = lines.join(" ");
-
-      return {
-        id: index + 1,
-        caption: narration,
-        visualPrompt: visualPrompt(title, narration, index),
-        imageFile: null,
-        imageUrl: null,
-        image: null
-      };
-    });
-
+    const narrations = chunks.map(lines => lines.join(" "));
+    const timings = estimateScenePlan(narrations);
+    state.scenes = narrations.map((narration, index) => ({
+      id: index + 1,
+      caption: narration,
+      subtitlePhrases: splitSubtitlePhrasesForUI(narration),
+      ...timings[index],
+      action: narration,
+      camera: ["Wide establishing shot","Medium tracking shot","Close-up reaction shot","Over-the-shoulder shot","Low-angle dramatic shot","Emotional close-up"][index % 6],
+      visualPrompt: visualPrompt(title, narration, index),
+      imageFile: null,
+      imageUrl: null,
+      image: null
+    }));
     renderSceneCards();
     drawScene(0, 0);
-
     $("previewTitle").textContent = title;
-    $("previewCaption").textContent =
-      `${state.scenes.length} scenes ready. Add your images.`;
+    $("previewCaption").textContent = `${state.scenes.length} scenes ready · ${timings[timings.length - 1].end}s estimated. Add your images.`;
+  }
+
+  function splitSubtitlePhrasesForUI(text) {
+    const words = String(text || "").trim().match(/\\S+/g) || [];
+    const phrases = [];
+    let line = [];
+    words.forEach(word => {
+      line.push(word);
+      if (line.length >= 5 || (/[.!?…]["'”’)]?$/.test(word) && line.length >= 2)) {
+        phrases.push(line.join(" "));
+        line = [];
+      }
+    });
+    if (line.length) phrases.push(line.join(" "));
+    return phrases;
   }
 
   function visualPrompt(title, narration, index) {
-    const style = $("visualStyle").value;
-
-    return `${style}, vertical 9:16 cinematic film still for the story "${title}". Scene ${index + 1}: ${narration}. Expressive characters, consistent character appearance, dramatic lighting, detailed environment, cinematic depth of field, rich color grading, strong composition, dynamic camera angle. No words, no letters, no subtitles, no watermark.`;
+    const style = $("visualStyle").value || "Stylized 3D cinematic";
+    const text = String(narration || "").trim();
+    const lower = text.toLowerCase();
+    const setting = /lake|water|river|sea|shore/.test(lower) ? "dark moonlit lakeshore, rippling water and mist" :
+      /home|door|mother|house|room/.test(lower) ? "warm modest family home, doorway and intimate interior" :
+      /forest|tree|woods/.test(lower) ? "dense atmospheric forest with layered trees" :
+      /street|road|ran|run/.test(lower) ? "cinematic village street with deep perspective" :
+      "story-specific environment grounded in the action, with clear foreground and background";
+    const mood = /scream|dragged|monster|danger|fear|shadow/.test(lower) ? "tense, mysterious, high-stakes atmosphere" :
+      /hug|mother|love|home|whisper|recognized/.test(lower) ? "warm emotional atmosphere, relief and tenderness" :
+      /gold|magic|glow|spark/.test(lower) ? "magical atmosphere with controlled luminous highlights" :
+      "expressive dramatic atmosphere";
+    const action = text.replace(/["“”]/g, "'").slice(0, 420);
+    const shot = ["wide shot showing geography and action","medium shot focused on the main action","tight facial close-up capturing emotion","over-the-shoulder composition revealing the subject","low-angle dynamic composition"][index % 5];
+    return `${style}, vertical 9:16 animated feature-film frame for "${title}". VISUAL MOMENT: faithfully depict this exact action: ${action}. SETTING: ${setting}. COMPOSITION: ${shot}, clear subject separation, readable silhouettes, foreground-midground-background depth. PERFORMANCE: expressive face, believable body language, emotionally clear gesture matching the moment. LIGHTING & MOOD: ${mood}, cinematic motivated lighting, rich but coherent color palette, detailed materials, depth of field. CONTINUITY: preserve the same character designs, clothing, proportions and environment across every scene; do not add unmentioned characters or props. No text, letters, subtitles, logos or watermark.`;
   }
 
   function renderSceneCards() {
