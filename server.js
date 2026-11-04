@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
-const { startStoryGeneration, getStoryGeneration, isStoryProviderConfigured } = require("./lib/providers/llm");
+const { startStoryGeneration, getStoryGeneration, startExplainerGeneration, getExplainerGeneration, isStoryProviderConfigured } = require("./lib/providers/llm");
 
 const app = express();
 app.disable("x-powered-by");
@@ -18,6 +18,40 @@ app.get("/api/health", (_req, res) => {
     storyProvider: isStoryProviderConfigured() ? "configured" : "not_configured",
     videoProvider: "not_configured"
   });
+});
+
+app.post("/api/explainer/plan", async (req, res) => {
+  try {
+    const topic = typeof req.body?.topic === "string" ? req.body.topic.trim() : "";
+    const targetDuration = typeof req.body?.targetDuration === "string"
+      ? req.body.targetDuration.slice(0, 40) : "natural";
+    if (!topic) return res.status(400).json({ error: "Enter a topic or question for AHM to explain." });
+    if (topic.length > 6000) {
+      return res.status(400).json({ error: "Please keep your topic under 6,000 characters." });
+    }
+    const job = await startExplainerGeneration(topic, targetDuration);
+    return res.status(202).json({ ok: true, jobId: job.id, status: job.status });
+  } catch (error) {
+    const status = error.code === "STORY_PROVIDER_NOT_CONFIGURED" ? 503 : 502;
+    console.error("AHM explainer job start failed:", error.message);
+    return res.status(status).json({ error: error.message || "Could not start explainer planning." });
+  }
+});
+
+app.get("/api/explainer/plan/:jobId", async (req, res) => {
+  try {
+    const result = await getExplainerGeneration(req.params.jobId);
+    if (result.status !== "completed") return res.json({ ok: true, status: result.status });
+    return res.json({
+      ok: true,
+      status: "completed",
+      story: result.story,
+      video: { status: "not_started", message: "The explainer plan is ready. Genuine AI video generation is not connected yet." }
+    });
+  } catch (error) {
+    console.error("AHM explainer job check failed:", error.message);
+    return res.status(502).json({ error: error.message || "Could not check explainer generation." });
+  }
 });
 
 app.post("/api/story/plan", async (req, res) => {
