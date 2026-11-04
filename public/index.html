@@ -12,7 +12,7 @@
     <div class="brandMark">AHM</div>
     <div>
       <div class="brand">AHM STUDIO</div>
-      <div class="tagline">AI STORY VIDEO MAKER · FREE-FIRST</div>
+      <div class="tagline">AI EXPLAINER VIDEO STUDIO · FREE-FIRST</div>
     </div>
     <div class="freeBadge">$0 MODE</div>
   </header>
@@ -20,18 +20,18 @@
   <main class="layout">
     <section class="intro panel">
       <div class="eyebrow">CREATE · DIRECT · GENERATE</div>
-      <h1>Turn your story into a cinematic video.</h1>
-      <p>Write a story once. AHM's AI director plans the story, characters, scenes and cinematic video prompts. Automatic video generation is being connected next.</p>
+      <h1>Turn any topic into a cinematic 3D explainer.</h1>
+      <p>Enter a question, fact, idea or script. AHM's Director plans a complete explanation with purpose-built 3D visuals, camera moves, transitions and sound direction.</p>
 
       <div class="notice">
-        <strong>Free-first development:</strong>
-        Story planning is connected to Gemini. Real AI video generation and automatic voice production are still being integrated; this page will clearly show what is and is not ready.
+        <strong>Building AHM's production engine:</strong>
+        Topic-to-explainer planning is connected to Gemini. Genuine AI footage, automatic narration and final MP4 rendering are still being integrated; AHM will never label a placeholder as a finished video.
       </div>
 
       <div class="toolLinks">
         <a href="https://huggingface.co/spaces/mrfakename/Z-Image-Turbo" target="_blank" rel="noopener">Free AI images ↗</a>
         <a href="https://huggingface.co/spaces/Qwen/Qwen3-TTS" target="_blank" rel="noopener">AI narration ↗</a>
-        <a href="https://huggingface.co/chat/" target="_blank" rel="noopener">AI story writer ↗</a>
+        <a href="https://huggingface.co/chat/" target="_blank" rel="noopener">AI assistant ↗</a>
       </div>
     </section>
 
@@ -39,31 +39,31 @@
       <div class="sectionHead">
         <span class="step">01</span>
         <div>
-          <h2>Story and narration</h2>
-          <p>Write your story or paste an existing script.</p>
+          <h2>Your topic or script</h2>
+          <p>Ask a question, enter a fact or idea, or paste a script. AHM chooses the best visual approach.</p>
         </div>
       </div>
 
-      <label for="titleInput">Video title</label>
+      <label for="titleInput">Optional video title</label>
       <input id="titleInput" maxlength="100"
-        placeholder="The Fisherman Who Found a Golden Fish"
-        value="The Secret Beneath the Lake">
+        placeholder="e.g. Why does your stomach make sounds?"
+        value="">
 
-      <label for="scriptInput">Story / narration script</label>
+      <label for="scriptInput">Topic, question, idea or existing script</label>
       <textarea id="scriptInput" rows="7"
-        placeholder="Paste your complete story here. Separate important moments into sentences or paragraphs."></textarea>
+        placeholder="Example: What happens inside your body when you swallow food? Or paste your own narration script…"></textarea>
 
       <div class="row wrap">
-        <button id="aiStoryBtn" class="primary">Generate story with AI</button>
-        <button id="sceneBtn" class="secondary">Build scene plan</button>
+        <button id="aiStoryBtn" class="primary">Create AI explainer plan</button>
+        <button id="sceneBtn" class="secondary">Build basic outline manually</button>
       </div>
-      <p id="aiStoryStatus" class="hint" role="status">AI story planning uses your secure Gemini key. Video generation is a separate stage and is not connected yet.</p>
+      <p id="aiStoryStatus" class="hint" role="status">AHM creates the explanation and visual production plan first. No finished video has been rendered yet.</p>
 
       <label class="uploadBox" for="voiceFile">
         <span class="uploadIcon">🎙️</span>
         <span>
-          <strong>Upload narration audio</strong>
-          <small>Choose your narration audio file.</small>
+          <strong>Optional: use your own narration</strong>
+          <small>Not required. AHM's automatic voice pipeline is planned.</small>
           <em id="voiceName">No narration uploaded</em>
         </span>
       </label>
@@ -72,7 +72,7 @@
       <label class="uploadBox" for="musicFile">
         <span class="uploadIcon">🎵</span>
         <span>
-          <strong>Background music</strong>
+          <strong>Optional: add your own music</strong>
           <small>Optional. Use audio you have permission to use.</small>
           <em id="musicName">No music uploaded</em>
         </span>
@@ -85,7 +85,7 @@
         <span class="step">02</span>
         <div>
           <h2>AI scene director</h2>
-          <p>Review the AI director's scenes and continuity instructions. Automatic visual generation is the next integration.</p>
+          <p>Review how each scene explains the topic, with planned camera movement, transitions and continuity. Genuine footage generation is the next integration.</p>
         </div>
       </div>
 
