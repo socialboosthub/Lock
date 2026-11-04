@@ -1,12 +1,14 @@
-name: AHM Director tests
+name: AHM Studio tests
 
 on:
   push:
     branches:
+      - feature/ahm-autonomous-generation-foundation
       - feature/ahm-director-v2-quality
   pull_request:
     branches:
       - main
+      - feature/ahm-autonomous-generation-foundation
 
 jobs:
   test:
