@@ -676,43 +676,43 @@
     const status = $("aiStoryStatus");
     const button = $("aiStoryBtn");
     if (!idea) {
-      alert("Bro, enter a story idea first.");
+      alert("Enter a topic, question, idea or script first.");
       return;
     }
     button.disabled = true;
     status.textContent = "Starting AHM Director…";
     try {
-      const startResponse = await fetch("/api/story/plan", {
+      const startResponse = await fetch("/api/explainer/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea, targetDuration: "natural, 30 to 120 seconds" })
+        body: JSON.stringify({ topic: idea, targetDuration: "natural, usually 30 to 60 seconds, maximum 120 seconds" })
       });
       const started = await startResponse.json();
       if (!startResponse.ok || !started.ok || !started.jobId) {
-        throw new Error(started.error || "Could not start story planning.");
+        throw new Error(started.error || "Could not start the explainer plan.");
       }
 
-      status.textContent = "AHM Director is writing your story…";
+      status.textContent = "AHM Director is building your explanation…";
       const deadline = Date.now() + 150000;
       let story = null;
       let pollCount = 0;
       while (Date.now() < deadline) {
         await new Promise(resolve => setTimeout(resolve, pollCount < 8 ? 1200 : pollCount < 20 ? 1800 : 2500));
         pollCount += 1;
-        const checkResponse = await fetch("/api/story/plan/" + encodeURIComponent(started.jobId));
+        const checkResponse = await fetch("/api/explainer/plan/" + encodeURIComponent(started.jobId));
         const data = await checkResponse.json();
         if (!checkResponse.ok || !data.ok) {
-          throw new Error(data.error || "Story planning failed.");
+          throw new Error(data.error || "Explainer planning failed.");
         }
         if (data.status === "completed" && data.story) {
           story = data.story;
           break;
         }
-        status.textContent = "AHM Director is planning your story… " + Math.round((Date.now() - (deadline - 150000)) / 1000) + "s elapsed. Please keep this page open.";
+        status.textContent = "AHM Director is planning the visuals and narration… " + Math.round((Date.now() - (deadline - 150000)) / 1000) + "s elapsed. Please keep this page open.";
       }
-      if (!story) throw new Error("The story is taking longer than expected. Your request may still be processing; please try again shortly.");
+      if (!story) throw new Error("The explainer is taking longer than expected. Your request may still be processing; please try again shortly.");
 
-      $("titleInput").value = story.title || "AHM Story";
+      $("titleInput").value = story.title || "AHM Explainer";
       $("scriptInput").value = story.narration || idea;
       state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [], continuityNotes: story.continuityNotes || [], storyArc: story.storyArc || null, titleFit: story.titleFit || null };
       const sceneCount = (story.scenes || []).length;
@@ -736,9 +736,9 @@
       }));
       renderSceneCards();
       drawScene(0, 0);
-      $("previewTitle").textContent = story.title || "Your AHM story";
+      $("previewTitle").textContent = story.title || "Your AHM explainer";
       $("previewCaption").textContent = `${state.scenes.length} AI-directed scenes · ${story.durationSec}s planned`;
-      status.textContent = `Story plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Subtitle phrase timing is provisional until narration audio is added. No video has been created.`;
+      status.textContent = `Explainer plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Subtitle timing is provisional until narration audio is generated. No video has been created.`;
 
       const intro = document.createElement("div");
       intro.className = "aiStorySummary";
@@ -749,7 +749,7 @@
       status.insertAdjacentElement("afterend", intro);
       renderDirectorBible(story);
     } catch (error) {
-      status.textContent = error.message || "Could not generate the story.";
+      status.textContent = error.message || "Could not generate the explainer plan.";
     } finally {
       button.disabled = false;
     }
