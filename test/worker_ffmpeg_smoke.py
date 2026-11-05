@@ -5,7 +5,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, "/app")
-from handler import assemble_final_video, fit_voice_clip, make_srt, normalize_clip, probe_audio_duration, run_ffmpeg
+import handler
+from handler import assemble_final_video, make_srt, normalize_clip, probe_audio_duration, run_ffmpeg
 
 
 def main():
@@ -28,41 +29,42 @@ def main():
             normalized.append(video)
             ambience.append(fx)
 
-        raw_voice_1 = work / "raw_voice_1.wav"
-        raw_voice_2 = work / "raw_voice_2.wav"
-        run_ffmpeg([
-            "ffmpeg", "-y", "-f", "lavfi", "-i",
-            "sine=frequency=660:sample_rate=24000:duration=3",
-            "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", str(raw_voice_1),
-        ])
-        run_ffmpeg([
-            "ffmpeg", "-y", "-f", "lavfi", "-i",
-            "sine=frequency=550:sample_rate=24000:duration=1",
-            "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", str(raw_voice_2),
-        ])
-        voice_part_1 = work / "voice_part_1.wav"
-        voice_part_2 = work / "voice_part_2.wav"
-        fit_voice_clip(raw_voice_1, voice_part_1, 2)
-        fit_voice_clip(raw_voice_2, voice_part_2, 2)
-        assert abs(probe_audio_duration(voice_part_1) - 2) < 0.1
-        assert abs(probe_audio_duration(voice_part_2) - 2) < 0.1
-        voice_list = work / "voice_list.txt"
-        voice_list.write_text(
-            f"file '{voice_part_1.as_posix()}'\n" + f"file '{voice_part_2.as_posix()}'\n",
-            encoding="utf-8",
-        )
-        voice = work / "voice.wav"
-        run_ffmpeg([
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(voice_list),
-            "-c", "copy", str(voice),
-        ])
-        subtitles = work / "captions.srt"
-        make_srt({
+        story = {
+            "title": "AHM Audio Sync Test",
+            "narration": "The first narration.",
+            "characters": [{"id": "char_1", "name": "Elias", "voice": "Puck"}],
             "scenes": [
-                {"start": 0, "end": 2, "narration": "This is the first test scene.", "subtitlePhrases": ["This is the first test scene."]},
-                {"start": 2, "end": 4, "narration": "This is the second test scene.", "subtitlePhrases": ["This is the second test scene."]},
-            ]
-        }, subtitles)
+                {"start": 0, "end": 2, "durationSec": 2, "narration": "The first narration.", "subtitlePhrases": ["The first narration."]},
+                {"start": 2, "end": 4, "durationSec": 2, "dialogue": [{"character": "char_1", "line": "Look at that!"}]},
+            ],
+        }
+        generated_audio = {"count": 0}
+
+        def fake_tts_generation(_request, destination):
+            duration = 3 if generated_audio["count"] == 0 else 1
+            frequency = 660 if generated_audio["count"] == 0 else 550
+            generated_audio["count"] += 1
+            run_ffmpeg([
+                "ffmpeg", "-y", "-f", "lavfi", "-i",
+                f"sine=frequency={frequency}:sample_rate=24000:duration={duration}",
+                "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", str(destination),
+            ])
+            return destination
+
+        handler.generate_tts_audio = fake_tts_generation
+        voice = work / "voice.wav"
+        handler.write_tts_wav(story, voice, "Charon")
+        assert generated_audio["count"] == 2
+        assert abs(probe_audio_duration(voice) - 4) < 0.1
+        assert abs(story["scenes"][0]["speechDurationSec"] - 2) < 0.1
+        assert abs(story["scenes"][1]["speechDurationSec"] - 1) < 0.1
+
+        subtitles = work / "captions.srt"
+        make_srt(story, subtitles)
+        subtitle_text = subtitles.read_text(encoding="utf-8")
+        assert "Look at that!" in subtitle_text
+        assert "00:00:02,000 --> 00:00:03,000" in subtitle_text
+
         music = work / "music.wav"
         run_ffmpeg([
             "ffmpeg", "-y", "-f", "lavfi", "-i",
