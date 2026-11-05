@@ -7,8 +7,42 @@ const { startStoryGeneration, getStoryGeneration, startExplainerGeneration, getE
 const { startVideoJob, getVideoJob, isVideoProviderConfigured } = require("./lib/providers/video");
 
 const app = express();
+const rateLimitBuckets = new Map();
+app.set("trust proxy", true);
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
+
+function createRateLimiter(name, maxRequests, windowMs) {
+  return (req, res, next) => {
+    const now = Date.now();
+    const ip = String(req.ip || req.headers["x-forwarded-for"] || "unknown").split(",")[0].trim();
+    const key = name + ":" + ip;
+    let bucket = rateLimitBuckets.get(key);
+    if (!bucket || now >= bucket.resetAt) {
+      bucket = { count: 0, resetAt: now + windowMs };
+      rateLimitBuckets.set(key, bucket);
+    }
+    if (bucket.count >= maxRequests) {
+      const retrySeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.set("Retry-After", String(retrySeconds));
+      return res.status(429).json({
+        ok: false,
+        error: "AHM is receiving too many requests from this connection. Please wait before trying again."
+      });
+    }
+    bucket.count++;
+    if (rateLimitBuckets.size > 5000) {
+      for (const [bucketKey, value] of rateLimitBuckets) {
+        if (now >= value.resetAt) rateLimitBuckets.delete(bucketKey);
+      }
+    }
+    next();
+  };
+}
+
+const limitExplainerPlans = createRateLimiter("explainer-plan", 8, 15 * 60 * 1000);
+const limitVideoJobs = createRateLimiter("video-job", 1, 10 * 60 * 1000);
+const limitStoryPlans = createRateLimiter("story-plan", 5, 15 * 60 * 1000);
 
 app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h" }));
 
@@ -24,7 +58,7 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.post("/api/explainer/plan", async (req, res) => {
+app.post("/api/explainer/plan", limitExplainerPlans, async (req, res) => {
   try {
     const topic = typeof req.body?.topic === "string" ? req.body.topic.trim() : "";
     const targetDuration = typeof req.body?.targetDuration === "string"
@@ -57,7 +91,7 @@ app.post("/api/explainer/plan", async (req, res) => {
   }
 });
 
-app.post("/api/explainer/video", async (req, res) => {
+app.post("/api/explainer/video", limitVideoJobs, async (req, res) => {
   try {
     const story = req.body?.story;
     if (!story || !Array.isArray(story.scenes) || !story.scenes.length) {
@@ -122,7 +156,7 @@ app.get("/api/explainer/plan/:jobId", async (req, res) => {
   }
 });
 
-app.post("/api/story/plan", async (req, res) => {
+app.post("/api/story/plan", limitStoryPlans, async (req, res) => {
   try {
     const idea = typeof req.body?.idea === "string" ? req.body.idea.trim() : "";
     const targetDuration = typeof req.body?.targetDuration === "string"
