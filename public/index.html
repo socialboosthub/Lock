@@ -135,6 +135,28 @@
       <div class="sectionHead">
         <span class="step">03</span>
         <div>
+          <h2>Reusable character library</h2>
+          <p>Save character designs, edit their identities and choose which ones AHM should reuse in future plans.</p>
+        </div>
+      </div>
+
+      <label for="characterName">Character name</label>
+      <input id="characterName" maxlength="80" placeholder="e.g. Professor Nova">
+
+      <label for="characterDescription">Character identity and appearance</label>
+      <textarea id="characterDescription" rows="3" maxlength="1600" placeholder="Face, age, clothing, build, personality, voice and permanent visual details…"></textarea>
+
+      <div class="row wrap">
+        <button id="saveCharacterBtn" class="secondary">Save new character</button>
+        <button id="savePlanCharactersBtn" class="secondary" disabled>Save characters from current plan</button>
+      </div>
+      <div id="characterLibraryList" class="historyEmpty">Your saved characters will appear here.</div>
+    </section>
+
+    <section class="panel">
+      <div class="sectionHead">
+        <span class="step">04</span>
+        <div>
           <h2>Render your video</h2>
           <p>The production worker generates each cinematic clip, creates narration, mixes scene sound and optional original music, burns in timed subtitles and exports the final MP4.</p>
         </div>
@@ -192,7 +214,7 @@
 
     <section class="panel">
       <div class="sectionHead">
-        <span class="step">04</span>
+        <span class="step">05</span>
         <div>
           <h2>Video history</h2>
           <p>Videos saved in this browser on this device.</p>
