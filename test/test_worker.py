@@ -8,6 +8,7 @@ from worker.handler import (
     make_srt,
     scene_duration,
     scene_prompt,
+    generate_music,
 )
 
 
@@ -44,6 +45,19 @@ class AHMWorkerTests(unittest.TestCase):
             ]
         }
         self.assertEqual(media_blocks(interaction, "video"), [{"type": "video", "data": "right"}])
+
+    def test_music_is_off_by_default_and_paid_generation_is_guarded(self):
+        self.assertIsNone(generate_music({"productionSettings": {"musicEnabled": False}}, "/tmp/unused.mp3"))
+        previous = __import__("os").environ.get("LYRIA_ENABLED")
+        __import__("os").environ["LYRIA_ENABLED"] = "false"
+        try:
+            with self.assertRaisesRegex(RuntimeError, "Lyria is not enabled"):
+                generate_music({"productionSettings": {"musicEnabled": True}}, "/tmp/unused.mp3")
+        finally:
+            if previous is None:
+                __import__("os").environ.pop("LYRIA_ENABLED", None)
+            else:
+                __import__("os").environ["LYRIA_ENABLED"] = previous
 
     def test_subtitles_use_scene_timing_and_preserve_phrases(self):
         story = {
