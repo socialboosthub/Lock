@@ -92,9 +92,9 @@ test("complete video API submits and polls a RunPod job", async () => {
   try {
     const story = {
       title: "Speed of Light",
-      narration: "Light travels fast.",
       durationSec: 45,
-      scenes: [{ narration: "Light moves." }],
+      characters: [{ id: "char_1", name: "Professor Nova", description: "Silver glasses and a navy coat." }],
+      scenes: [{ action: "A beam of light races through space.", dialogue: [{ character: "char_1", line: "Light travels fast!" }] }],
     };
     const started = await fetch(baseUrl + "/api/explainer/video", {
       method: "POST",
