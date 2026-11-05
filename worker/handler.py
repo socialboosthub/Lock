@@ -254,22 +254,25 @@ def build_tts_request(story, narrator_voice=None):
         raise RuntimeError("The Director plan contains no spoken narration or dialogue.")
 
     speaker_order = list(dict.fromkeys(item["speaker"] for item in segments))
-    if len(speaker_order) == 1:
-        script = segments[0]["text"] if len(segments) == 1 else "\\n\\n".join(item["text"] for item in segments)
-        return {
-            "input": "Read the following narration verbatim. Do not add, omit, paraphrase or repeat words. Use " +
-                     segments[0]["style"] + ".\\n\\n" + script,
-            "speech_config": [{"voice": narrator_voice or TTS_VOICE}],
-        }
-
-    primary = "Narrator" if "Narrator" in speaker_order else speaker_order[0]
-    secondary = next(name for name in speaker_order if name != primary)
     voice_names = {"Charon", "Kore", "Puck", "Aoede", "Fenrir", "Zephyr", "Leda", "Orus"}
+
     def character_voice(name, fallback):
         item = next((value for value in story.get("characters", []) if value.get("name") == name), {})
         selected = item.get("voice")
         return selected if isinstance(selected, str) and selected in voice_names else fallback
 
+    if len(speaker_order) == 1:
+        speaker = speaker_order[0]
+        selected_voice = narrator_voice or TTS_VOICE if speaker == "Narrator" else character_voice(speaker, "Puck")
+        script = segments[0]["text"] if len(segments) == 1 else "\n\n".join(item["text"] for item in segments)
+        return {
+            "input": "Read the following narration/dialogue verbatim. Do not add, omit, paraphrase or repeat words. Use " +
+                     segments[0]["style"] + ".\n\n" + script,
+            "speech_config": [{"voice": selected_voice}],
+        }
+
+    primary = "Narrator" if "Narrator" in speaker_order else speaker_order[0]
+    secondary = next(name for name in speaker_order if name != primary)
     if primary == "Narrator":
         primary_voice = narrator_voice or TTS_VOICE
     else:
