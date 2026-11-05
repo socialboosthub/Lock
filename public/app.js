@@ -184,6 +184,7 @@
 
   function buildScenes() {
     state.generatedStory = null;
+    $("savePlanCharactersBtn").disabled = true;
     $("renderBtn").disabled = false;
     $("renderBtn").textContent = "Render local image preview";
     const script = $("scriptInput").value.trim();
@@ -727,10 +728,18 @@
     $("renderBtn").textContent = "Create AI plan first";
     status.textContent = "Starting AHM Director…";
     try {
+      const characterReferences = (await characterAll())
+        .filter(character => character.useInAI !== false)
+        .slice(0, 8)
+        .map(character => ({ name: character.name, description: character.description }));
       const startResponse = await fetch("/api/explainer/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: idea, targetDuration: "natural, usually 30 to 60 seconds, maximum 120 seconds" })
+        body: JSON.stringify({
+          topic: idea,
+          targetDuration: "natural, usually 30 to 60 seconds, maximum 120 seconds",
+          characterReferences
+        })
       });
       const started = await startResponse.json();
       if (!startResponse.ok || !started.ok) {
@@ -746,6 +755,7 @@
 
       state.generatedStory = story;
       state.videoJobId = null;
+      $("savePlanCharactersBtn").disabled = !(story.characters || []).length;
       $("renderBtn").disabled = false;
       $("renderBtn").textContent = "Generate complete cinematic video";
       $("titleInput").value = story.title || "AHM Explainer";
