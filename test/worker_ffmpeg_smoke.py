@@ -48,7 +48,7 @@ def main():
         assert abs(probe_audio_duration(voice_part_2) - 2) < 0.1
         voice_list = work / "voice_list.txt"
         voice_list.write_text(
-            f"file '{voice_part_1.as_posix()}'\\nfile '{voice_part_2.as_posix()}'\\n",
+            f"file '{voice_part_1.as_posix()}'\n" + f"file '{voice_part_2.as_posix()}'\n",
             encoding="utf-8",
         )
         voice = work / "voice.wav"
