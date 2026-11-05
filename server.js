@@ -8,7 +8,7 @@ const { startVideoJob, getVideoJob, isVideoProviderConfigured } = require("./lib
 
 const app = express();
 app.disable("x-powered-by");
-app.use(express.json({ limit: "32kb" }));
+app.use(express.json({ limit: "2mb" }));
 
 app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h" }));
 
