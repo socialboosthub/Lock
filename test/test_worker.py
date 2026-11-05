@@ -12,6 +12,7 @@ from worker.handler import (
     build_video_input,
     generate_music,
     handler,
+    api_request,
 )
 
 
@@ -94,6 +95,40 @@ class AHMWorkerTests(unittest.TestCase):
                 __import__("os").environ.pop("LYRIA_ENABLED", None)
             else:
                 __import__("os").environ["LYRIA_ENABLED"] = previous
+
+    def test_interactions_api_requests_include_revision_header(self):
+        import os
+        from unittest.mock import patch
+
+        previous = os.environ.get("GEMINI_API_KEY")
+        os.environ["GEMINI_API_KEY"] = "test-key"
+        captured = []
+
+        class Response:
+            def __enter__(self):
+                return self
+            def __exit__(self, *_args):
+                return False
+            def read(self):
+                return b"{}"
+
+        def fake_urlopen(request, timeout):
+            captured.append(request)
+            return Response()
+
+        try:
+            with patch("urllib.request.urlopen", fake_urlopen):
+                api_request("/interactions", "POST", {"model": "test"})
+                api_request("/models/test:generateContent", "POST", {"contents": []})
+            interaction_headers = {key.lower(): value for key, value in captured[0].header_items()}
+            generate_headers = {key.lower(): value for key, value in captured[1].header_items()}
+            self.assertEqual(interaction_headers["api-revision"], "2026-05-20")
+            self.assertNotIn("api-revision", generate_headers)
+        finally:
+            if previous is None:
+                os.environ.pop("GEMINI_API_KEY", None)
+            else:
+                os.environ["GEMINI_API_KEY"] = previous
 
     def test_worker_raises_failures_so_RunPod_marks_the_job_failed(self):
         import os
