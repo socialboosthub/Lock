@@ -29,14 +29,19 @@ def api_request(path, method="GET", payload=None, timeout=900, raw=False):
     if not key:
         raise RuntimeError("GEMINI_API_KEY is missing in the RunPod worker environment.")
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request_url = path if path.startswith("https://") else API_BASE + path
+    headers = {
+        "x-goog-api-key": key,
+        "Content-Type": "application/json",
+    }
+    # Interactions requests require the revision header; GenerateContent does not.
+    if "/interactions" in request_url:
+        headers["Api-Revision"] = "2026-05-20"
     request = urllib.request.Request(
-        path if path.startswith("https://") else API_BASE + path,
+        request_url,
         data=body,
         method=method,
-        headers={
-            "x-goog-api-key": key,
-            "Content-Type": "application/json",
-        },
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
