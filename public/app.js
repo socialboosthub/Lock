@@ -13,7 +13,9 @@
     rendering: false,
     cancel: false,
     previewTimer: null,
-    currentBlob: null
+    currentBlob: null,
+    generatedStory: null,
+    videoJobId: null
   };
 
   const canvas = $("previewCanvas");
@@ -699,6 +701,10 @@
         throw new Error("AHM received an incomplete explainer plan. Please try again.");
       }
 
+      state.generatedStory = story;
+      state.videoJobId = null;
+      $("renderBtn").disabled = false;
+      $("renderBtn").textContent = "Generate complete cinematic video";
       $("titleInput").value = story.title || "AHM Explainer";
       $("scriptInput").value = story.narration || idea;
       state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [], continuityNotes: story.continuityNotes || [], storyArc: story.storyArc || null, titleFit: story.titleFit || null };
@@ -1057,7 +1063,91 @@
     `;
   }
 
-  $("renderBtn").addEventListener("click", renderVideo);
+  async function generateFullVideo() {
+    const story = state.generatedStory;
+    if (!story || !story.scenes?.length) {
+      alert("Create an AI Director plan first.");
+      return;
+    }
+    const button = $("renderBtn");
+    const status = $("renderStatus");
+    const download = $("downloadArea");
+    button.disabled = true;
+    $("cancelBtn").disabled = true;
+    download.classList.add("hidden");
+    state.videoJobId = null;
+    updateProgress(0, "STARTING AI VIDEO");
+
+    try {
+      const response = await fetch("/api/explainer/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ story })
+      });
+      const started = await response.json();
+      if (!response.ok || !started.ok || !started.jobId) {
+        throw new Error(started.error || "AHM could not start the video production job.");
+      }
+
+      state.videoJobId = started.jobId;
+      status.textContent = "Video production started. Generating cinematic scenes, narration, sound and subtitles…";
+      $("previewCaption").textContent = "AHM is rendering your complete video in the production worker.";
+      const deadline = Date.now() + 30 * 60 * 1000;
+
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 7000));
+        const check = await fetch("/api/explainer/video/" + encodeURIComponent(state.videoJobId));
+        const result = await check.json();
+        if (!check.ok || !result.ok) {
+          throw new Error(result.error || "Could not read the video production status.");
+        }
+        if (result.status === "completed" && result.video?.finalVideoUrl) {
+          const url = new URL(result.video.finalVideoUrl);
+          if (url.protocol !== "https:") throw new Error("The video provider returned an unsafe download URL.");
+          const player = document.createElement("video");
+          player.controls = true;
+          player.playsInline = true;
+          player.preload = "metadata";
+          player.src = url.href;
+          player.style.width = "100%";
+          player.style.maxWidth = "420px";
+          player.style.borderRadius = "16px";
+          const link = document.createElement("a");
+          link.href = url.href;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.textContent = "Open / download your finished MP4";
+          link.className = "downloadLink";
+          const title = document.createElement("strong");
+          title.textContent = story.title + " · Finished video";
+          download.replaceChildren(title, player, link);
+          download.classList.remove("hidden");
+          updateProgress(1, "VIDEO READY");
+          status.textContent = "Complete MP4 ready · " + (result.video.sceneCount || story.scenes.length) + " generated scenes · narration and subtitles included.";
+          $("previewCaption").textContent = "Your finished cinematic explainer is ready to watch and download.";
+          return;
+        }
+        if (result.status === "failed") {
+          throw new Error(result.error || "The video production worker failed.");
+        }
+        const label = String(result.status || "processing").replace(/_/g, " ").toUpperCase();
+        status.textContent = "AHM production: " + label + ". Please keep this page open.";
+        updateProgress(0.15, label);
+      }
+      throw new Error("Video production is taking longer than 30 minutes. Your job may still be running; check again later.");
+    } catch (error) {
+      status.textContent = error.message || "Complete video generation failed.";
+      updateProgress(0, "VIDEO GENERATION FAILED");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Generate complete cinematic video";
+    }
+  }
+
+  $("renderBtn").addEventListener("click", () => {
+    if (state.generatedStory) generateFullVideo();
+    else renderVideo();
+  });
 
   async function loadHistory() {
     const host = $("historyList");
