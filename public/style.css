@@ -663,3 +663,49 @@ footer {
   color: #aeb8c7;
   font-size: 12px;
 }
+
+
+/* Automatic narration and score controls */
+.audioProductionSettings {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #343b49;
+  border-radius: 12px;
+  background: #111722;
+}
+.audioProductionSettings > label:not(.musicToggle) {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.audioProductionSettings select {
+  width: 100%;
+  margin-bottom: 13px;
+}
+.musicToggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  margin: 0;
+}
+.musicToggle input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--gold);
+  flex: 0 0 auto;
+}
+.musicToggle span {
+  display: grid;
+  gap: 4px;
+}
+.musicToggle strong {
+  font-size: 13px;
+}
+.musicToggle small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
