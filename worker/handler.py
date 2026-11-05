@@ -475,14 +475,15 @@ def make_srt(story, destination):
         if not narration:
             phrases = []
         phrases.extend(dialogue_phrases)
-        if not phrases:
-            fallback = str(scene.get("action") or "").strip()
-            phrases = [fallback] if fallback else []
         phrases = [str(value).strip() for value in phrases if str(value).strip()]
         if not phrases:
             continue
         start = float(scene.get("start", 0))
-        end = float(scene.get("end", start + 4))
+        scene_end = float(scene.get("end", start + 4))
+        speech_duration = float(scene.get("speechDurationSec", scene_end - start))
+        if speech_duration <= 0:
+            continue
+        end = min(scene_end, start + speech_duration)
         weights = [max(1, len(value.split())) for value in phrases]
         total = sum(weights)
         cursor = start
