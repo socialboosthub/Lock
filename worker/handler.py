@@ -234,7 +234,10 @@ def build_tts_request(story, narrator_voice=None):
         selected = item.get("voice")
         return selected if isinstance(selected, str) and selected in voice_names else fallback
 
-    primary_voice = narrator_voice or TTS_VOICE if primary == "Narrator" else character_voice(primary, "Puck")
+    if primary == "Narrator":
+        primary_voice = narrator_voice or TTS_VOICE
+    else:
+        primary_voice = character_voice(primary, "Puck")
     secondary_voice = character_voice(secondary, "Kore")
     content = []
     for segment in segments:
