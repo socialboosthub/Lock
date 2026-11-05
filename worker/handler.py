@@ -102,14 +102,14 @@ def scene_duration(scene):
         value = float(scene.get("durationSec") or (float(scene.get("end", 0)) - float(scene.get("start", 0))))
     except (TypeError, ValueError):
         value = 6.0
-    return max(3.0, min(10.0, value))
+    return max(1.0, min(10.0, value))
 
 
 def expand_scene_segments(scenes):
     segments = []
     for scene in scenes:
         try:
-            remaining = max(3.0, float(scene.get("durationSec") or (float(scene.get("end", 0)) - float(scene.get("start", 0)))))
+            remaining = max(1.0, float(scene.get("durationSec") or (float(scene.get("end", 0)) - float(scene.get("start", 0)))))
         except (TypeError, ValueError):
             remaining = 6.0
         part = 0
@@ -311,6 +311,21 @@ def upload_to_supabase(file_path, job_id):
     if not base or not key:
         raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for durable video downloads.")
     object_path = f"{job_id}/final.mp4"
+    bucket_request = urllib.request.Request(
+        f"{base}/storage/v1/bucket",
+        data=json.dumps({"id": bucket, "name": bucket, "public": False}).encode("utf-8"),
+        method="POST",
+        headers={"Authorization": f"Bearer {key}", "apikey": key, "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(bucket_request, timeout=60) as response:
+            response.read()
+    except urllib.error.HTTPError as error:
+        if error.code not in (400, 409):
+            detail = error.read().decode("utf-8", errors="replace")
+            if "already exists" not in detail.lower():
+                raise RuntimeError(f"Could not prepare Supabase storage bucket: {detail}") from error
+
     headers = {
         "Authorization": f"Bearer {key}",
         "apikey": key,
