@@ -63,8 +63,14 @@ def main():
                 {"start": 2, "end": 4, "narration": "This is the second test scene.", "subtitlePhrases": ["This is the second test scene."]},
             ]
         }, subtitles)
+        music = work / "music.mp3"
+        run_ffmpeg([
+            "ffmpeg", "-y", "-f", "lavfi", "-i",
+            "sine=frequency=220:sample_rate=48000:duration=1",
+            "-c:a", "libmp3lame", "-q:a", "5", str(music),
+        ])
         final = work / "final.mp4"
-        assemble_final_video(normalized, ambience, voice, None, subtitles, 4, work, final)
+        assemble_final_video(normalized, ambience, voice, music, subtitles, 4, work, final)
 
         probe = subprocess.run([
             "ffprobe", "-v", "error", "-show_entries",
