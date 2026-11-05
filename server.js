@@ -33,7 +33,15 @@ app.post("/api/explainer/plan", async (req, res) => {
     if (topic.length > 6000) {
       return res.status(400).json({ error: "Please keep your topic under 6,000 characters." });
     }
-    const result = await startExplainerGeneration(topic, targetDuration);
+    const characterReferences = Array.isArray(req.body?.characterReferences)
+      ? req.body.characterReferences.slice(0, 8).filter(item =>
+          item && typeof item.name === "string" && typeof item.description === "string"
+        ).map(item => ({
+          name: item.name.trim().slice(0, 80),
+          description: item.description.trim().slice(0, 1600)
+        })).filter(item => item.name && item.description)
+      : [];
+    const result = await startExplainerGeneration(topic, targetDuration, characterReferences);
     return res.status(200).json({
       ok: true,
       status: "completed",
