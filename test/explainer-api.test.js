@@ -73,6 +73,7 @@ test("explainer API generates a plan and includes saved character references", a
     assert.equal(response.status, 200);
     assert.equal(result.ok, true);
     assert.equal(result.story.scenes.length, 1);
+    assert.equal(result.video.status, "not_configured");
     const sent = JSON.parse(sentBody);
     const prompt = sent.contents[0].parts[0].text;
     assert.match(prompt, /Professor Nova/);
