@@ -191,7 +191,7 @@ def audio_block_data(interaction):
     raise RuntimeError("Gemini returned no audio data.")
 
 
-def write_tts_wav(script, destination):
+def write_tts_wav(script, destination, voice=None):
     prompt = (
         "Read the following narration verbatim. Do not add, omit, paraphrase or repeat any words. "
         "Use a confident, warm, energetic documentary storyteller delivery with clear diction, "
@@ -204,7 +204,7 @@ def write_tts_wav(script, destination):
                 "model": model,
                 "input": prompt,
                 "response_format": {"type": "audio"},
-                "generation_config": {"speech_config": [{"voice": TTS_VOICE}]},
+                "generation_config": {"speech_config": [{"voice": voice or TTS_VOICE}]},
             }, timeout=300)
             interaction = wait_for_interaction(interaction, timeout=300)
             audio = audio_block_data(interaction)
@@ -225,8 +225,11 @@ def write_tts_wav(script, destination):
 
 
 def generate_music(story, destination):
-    if os.getenv("LYRIA_ENABLED", "false").lower() != "true":
+    settings = story.get("productionSettings") or {}
+    if not settings.get("musicEnabled", False):
         return None
+    if os.getenv("LYRIA_ENABLED", "false").lower() != "true":
+        raise RuntimeError("Original background music was requested, but Lyria is not enabled in the worker environment.")
     prompt = (
         "Create an original instrumental cinematic underscore for a short vertical educational explainer. "
         "No vocals, no lyrics, no recognizable existing melody. Use a memorable motif, modern orchestral "
@@ -396,7 +399,8 @@ def process_job(event):
         run_ffmpeg(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(ambience_list), "-c", "copy", str(ambience_all)])
 
         voice = work / "narration.wav"
-        write_tts_wav(str(story.get("narration") or ""), voice)
+        settings = story.get("productionSettings") or {}
+        write_tts_wav(str(story.get("narration") or ""), voice, settings.get("voice"))
         music = generate_music(story, work / "music.mp3")
         subtitles = make_srt(story, work / "captions.srt")
         final = work / "final.mp4"
