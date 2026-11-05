@@ -78,6 +78,25 @@
         </span>
       </label>
       <input class="hiddenInput" id="musicFile" type="file" accept="audio/*">
+
+      <div class="audioProductionSettings">
+        <label for="voiceStyle">AI narrator voice</label>
+        <select id="voiceStyle">
+          <option value="Charon" selected>Charon · Clear documentary voice</option>
+          <option value="Kore">Kore · Firm and expressive</option>
+          <option value="Puck">Puck · Upbeat and energetic</option>
+          <option value="Aoede">Aoede · Breezy and warm</option>
+          <option value="Fenrir">Fenrir · Excitable and dramatic</option>
+          <option value="Zephyr">Zephyr · Bright and friendly</option>
+          <option value="Leda">Leda · Youthful</option>
+          <option value="Orus">Orus · Firm</option>
+        </select>
+
+        <label class="musicToggle" for="musicEnabled">
+          <input id="musicEnabled" type="checkbox">
+          <span><strong>Generate an original background score</strong><small>Optional paid Lyria music generation. Scene ambience and sound effects are generated separately.</small></span>
+        </label>
+      </div>
     </section>
 
     <section class="panel">
