@@ -433,7 +433,7 @@ def assemble_final_video(normalized, ambience, voice, music, subtitles, total_du
         filter_parts.append("[3:a]volume=0.16[music]")
         labels.append("[music]")
     filter_parts.append("".join(labels) + f"amix=inputs={len(labels)}:duration=longest:dropout_transition=2,loudnorm=I=-16:LRA=11:TP=-1.5[audio]")
-    subtitle_filter = "subtitles=" + str(subtitles).replace(":", "\\:").replace("'", "\\'") + ":force_style='FontName=DejaVu Sans,FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110'"
+    subtitle_filter = "subtitles=" + str(subtitles).replace(":", "\\:").replace("'", "\\'") + ":force_style='FontName=DejaVu Sans,FontSize=30,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=4,Shadow=1,Alignment=2,MarginV=100'"
     command = ["ffmpeg", "-y", *inputs, "-filter_complex", ";".join(filter_parts),
                "-vf", subtitle_filter, "-map", "0:v:0", "-map", "[audio]",
                "-t", str(total_duration), "-c:v", "libx264", "-preset", "veryfast",
