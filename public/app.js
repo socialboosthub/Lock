@@ -1148,8 +1148,7 @@
     button.disabled = true;
     $("cancelBtn").disabled = true;
     download.classList.add("hidden");
-    state.videoJobId = null;
-    updateProgress(0, "STARTING AI VIDEO");
+    updateProgress(0, state.videoJobId ? "RESUMING VIDEO" : "STARTING AI VIDEO");
 
     try {
       if (!state.videoJobId) {
@@ -1224,7 +1223,7 @@
           throw new Error(result.error || "The video production worker failed.");
         }
         const label = String(result.status || "processing").replace(/_/g, " ").toUpperCase();
-        status.textContent = "AHM production: " + label + ". Please keep this page open.";
+        status.textContent = "AHM production: " + label + ". You can return and resume this job on this device.";
         updateProgress(0.15, label);
       }
       throw new Error("Video production is taking longer than 30 minutes. Your job may still be running; check again later.");
