@@ -375,8 +375,6 @@ def make_srt(story, destination):
         phrases = [str(value).strip() for value in phrases if str(value).strip()]
         if not phrases:
             continue
-        if not phrases:
-            continue
         start = float(scene.get("start", 0))
         end = float(scene.get("end", start + 4))
         weights = [max(1, len(value.split())) for value in phrases]
@@ -409,6 +407,40 @@ def normalize_clip(source, destination, duration, ambience_path):
             "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
             "-t", str(duration), "-c:a", "pcm_s16le", str(ambience_path),
         ])
+
+
+def assemble_final_video(normalized, ambience, voice, music, subtitles, total_duration, work, destination):
+    if not normalized or not ambience:
+        raise RuntimeError("The video assembly step received no generated scenes or scene audio.")
+    concat_file = Path(work) / "clips.txt"
+    concat_file.write_text("".join(f"file '{Path(path).as_posix()}'\\n" for path in normalized), encoding="utf-8")
+    video_only = Path(work) / "picture.mp4"
+    run_ffmpeg(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(video_only)])
+
+    ambience_list = Path(work) / "ambience.txt"
+    ambience_list.write_text("".join(f"file '{Path(path).as_posix()}'\\n" for path in ambience), encoding="utf-8")
+    ambience_all = Path(work) / "ambience.wav"
+    run_ffmpeg(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(ambience_list), "-c", "copy", str(ambience_all)])
+
+    filter_parts = [
+        "[1:a]volume=1.0[voice]",
+        "[2:a]volume=0.25[fx]",
+    ]
+    inputs = ["-i", str(video_only), "-i", str(voice), "-i", str(ambience_all)]
+    labels = ["[voice]", "[fx]"]
+    if music:
+        inputs.extend(["-stream_loop", "-1", "-i", str(music)])
+        filter_parts.append("[3:a]volume=0.16[music]")
+        labels.append("[music]")
+    filter_parts.append("".join(labels) + f"amix=inputs={len(labels)}:duration=longest:dropout_transition=2,loudnorm=I=-16:LRA=11:TP=-1.5[audio]")
+    subtitle_filter = "subtitles=" + str(subtitles).replace(":", "\\\\:").replace("'", "\\\\'") + ":force_style='FontName=DejaVu Sans,FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110'"
+    command = ["ffmpeg", "-y", *inputs, "-filter_complex", ";".join(filter_parts),
+               "-vf", subtitle_filter, "-map", "0:v:0", "-map", "[audio]",
+               "-t", str(total_duration), "-c:v", "libx264", "-preset", "veryfast",
+               "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
+               "-movflags", "+faststart", str(destination)]
+    run_ffmpeg(command)
+    return destination
 
 
 def upload_to_supabase(file_path, job_id):
@@ -506,41 +538,13 @@ def process_job(event):
             normalized.append(video)
             ambience.append(fx)
 
-        concat_file = work / "clips.txt"
-        concat_file.write_text("".join(f"file '{path.as_posix()}'\n" for path in normalized), encoding="utf-8")
-        video_only = work / "picture.mp4"
-        run_ffmpeg(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(video_only)])
-
-        ambience_list = work / "ambience.txt"
-        ambience_list.write_text("".join(f"file '{path.as_posix()}'\n" for path in ambience), encoding="utf-8")
-        ambience_all = work / "ambience.wav"
-        run_ffmpeg(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(ambience_list), "-c", "copy", str(ambience_all)])
-
         voice = work / "narration.wav"
         settings = story.get("productionSettings") or {}
         write_tts_wav(story, voice, settings.get("voice"))
         music = generate_music(story, work / "music.mp3")
         subtitles = make_srt(story, work / "captions.srt")
         final = work / "final.mp4"
-
-        filter_parts = [
-            "[1:a]volume=1.0[voice]",
-            "[2:a]volume=0.25[fx]",
-        ]
-        inputs = ["-i", str(video_only), "-i", str(voice), "-i", str(ambience_all)]
-        labels = ["[voice]", "[fx]"]
-        if music:
-            inputs.extend(["-stream_loop", "-1", "-i", str(music)])
-            filter_parts.append("[3:a]volume=0.16[music]")
-            labels.append("[music]")
-        filter_parts.append("".join(labels) + f"amix=inputs={len(labels)}:duration=longest:dropout_transition=2,loudnorm=I=-16:LRA=11:TP=-1.5[audio]")
-        subtitle_filter = "subtitles=" + str(subtitles).replace(":", "\\:").replace("'", "\\'") + ":force_style='FontName=DejaVu Sans,FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110'"
-        command = ["ffmpeg", "-y", *inputs, "-filter_complex", ";".join(filter_parts),
-                   "-vf", subtitle_filter, "-map", "0:v:0", "-map", "[audio]",
-                   "-t", str(total_duration), "-c:v", "libx264", "-preset", "veryfast",
-                   "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
-                   "-movflags", "+faststart", str(final)]
-        run_ffmpeg(command)
+        assemble_final_video(normalized, ambience, voice, music, subtitles, total_duration, work, final)
 
         final_url = upload_to_supabase(final, job_id)
         log(f"Production complete: {job_id}")
