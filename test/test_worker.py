@@ -45,6 +45,15 @@ class AHMWorkerTests(unittest.TestCase):
         self.assertNotIn("Unrelated Guide", prompt)
         self.assertIn("Do not add", prompt)
 
+    def test_single_character_dialogue_uses_the_character_voice(self):
+        story = {
+            "characters": [{"id": "char_1", "name": "Elias", "voice": "Fenrir"}],
+            "scenes": [{"dialogue": [{"character": "char_1", "line": "I will find the answer."}]}],
+        }
+        request = build_tts_request(story, "Charon")
+        self.assertEqual(request["speech_config"], [{"voice": "Fenrir"}])
+        self.assertIn("I will find the answer.", request["input"])
+
     def test_video_input_attaches_character_reference_images(self):
         import base64
         with tempfile.TemporaryDirectory() as temp:
