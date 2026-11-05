@@ -23,7 +23,7 @@ The worker uses Gemini Omni Flash (`gemini-omni-1.1-flash`) to generate 3–10 s
 
 The worker supports original instrumental tracks from Lyria 3.5. It is disabled by default.
 
-**Billing warning:** Google lists Lyria 3.5 at US$0.08 per generated song and no free tier. Set `LYRIA_ENABLED=true` only after approving this cost. When disabled, scene-generated ambience and sound effects are still mixed with the narrator, but there is no separate generated music track.
+**Billing warning:** Google lists Lyria 3.5 at US$0.08 per generated song and no free tier. Set `LYRIA_ENABLED=true` in both Vercel and the RunPod worker only after approving this cost. When disabled, scene-generated ambience and sound effects are still mixed with the narrator, but there is no separate generated music track.
 
 ## 4. RunPod Serverless worker
 
