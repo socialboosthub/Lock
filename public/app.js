@@ -688,29 +688,16 @@
         body: JSON.stringify({ topic: idea, targetDuration: "natural, usually 30 to 60 seconds, maximum 120 seconds" })
       });
       const started = await startResponse.json();
-      if (!startResponse.ok || !started.ok || !started.jobId) {
-        throw new Error(started.error || "Could not start the explainer plan.");
+      if (!startResponse.ok || !started.ok) {
+        throw new Error(started.error || "Could not generate the explainer plan.");
       }
 
-      status.textContent = "AHM Director is building your explanation…";
-      const deadline = Date.now() + 150000;
-      let story = null;
-      let pollCount = 0;
-      while (Date.now() < deadline) {
-        await new Promise(resolve => setTimeout(resolve, pollCount < 8 ? 1200 : pollCount < 20 ? 1800 : 2500));
-        pollCount += 1;
-        const checkResponse = await fetch("/api/explainer/plan/" + encodeURIComponent(started.jobId));
-        const data = await checkResponse.json();
-        if (!checkResponse.ok || !data.ok) {
-          throw new Error(data.error || "Explainer planning failed.");
-        }
-        if (data.status === "completed" && data.story) {
-          story = data.story;
-          break;
-        }
-        status.textContent = "AHM Director is planning the visuals and narration… " + Math.round((Date.now() - (deadline - 150000)) / 1000) + "s elapsed. Please keep this page open.";
+      // Explainer planning now uses a direct model response, not a background
+      // interaction that can fail asynchronously after appearing to start.
+      const story = started.story;
+      if (!story || !Array.isArray(story.scenes) || !story.scenes.length) {
+        throw new Error("AHM received an incomplete explainer plan. Please try again.");
       }
-      if (!story) throw new Error("The explainer is taking longer than expected. Your request may still be processing; please try again shortly.");
 
       $("titleInput").value = story.title || "AHM Explainer";
       $("scriptInput").value = story.narration || idea;
