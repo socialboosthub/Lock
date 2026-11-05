@@ -1,79 +1,51 @@
-# AHM Studio V8
+# AHM Studio
 
-A clean-start automated short-form 3D storytelling app.
+AHM Studio is a mobile-first, AI-directed short-form explainer and cinematic video production app.
 
-## What is already included
+## Production workflow
 
-- Mobile-friendly AHM Studio UI
-- AI story/script pipeline
-- Natural 30-120 second duration selection
-- Curiosity-loop prompt
-- Character/environment/prop continuity manifest
-- RunPod Serverless adapter
-- Voice provider adapter for a saved cloned-voice ID
-- Subtitle/music/SFX/edit requirements
-- TikTok + YouTube publishing adapters
-- Demo mode so the interface can be tested without spending GPU money
-- No secrets stored in frontend code
+1. Gemini creates a fact-aware explainer plan, narration script, scene timings and continuity bible.
+2. The RunPod Serverless worker generates a vertical 9:16 cinematic clip for every scene with Gemini Omni Flash.
+3. Gemini 3.8 Flash TTS generates the narrator voice.
+4. Each video clip contributes its own environmental sound and sound effects.
+5. Optional Lyria 3.5 creates an original instrumental background score.
+6. FFmpeg normalizes and joins the clips, mixes narration / scene audio / music, burns timed subtitles and exports an MP4.
+7. The finished MP4 is uploaded to a private Supabase Storage bucket and returned as a signed download link.
 
-## Start locally
+The application does not claim a storyboard or placeholder render is a finished AI video.
+
+## Local development
 
 1. Copy `.env.example` to `.env`.
-2. Keep `DEMO_MODE=true` for the first UI test.
-3. Run:
-   npm install
-   npm start
-4. Open the shown local URL.
+2. Install Node dependencies: `npm install`.
+3. Run the app: `npm start`.
+4. Open the local URL shown by Node.
 
-## Important
+Run Node tests with `npm test`. Run worker tests with `python -m unittest discover -s test -p "test_worker.py"`.
 
-The app is intentionally honest about external dependencies. A real final MP4
-requires a real video-generation worker on RunPod and a voice provider/account.
-Automatic TikTok and YouTube posting also requires platform authorization/OAuth.
-The app does not pretend those services are connected when they are not.
+## Provider setup
 
-## Suggested production architecture
+Read [PRODUCTION_SETUP.md](./PRODUCTION_SETUP.md) before connecting production credentials.
 
-Browser -> Node orchestrator -> story AI -> RunPod GPU worker -> FFmpeg/edit ->
-voice -> storage -> TikTok/YouTube APIs.
+The Director requires `GEMINI_API_KEY`. The explainer planner tries the preferred model and then two stable Flash fallbacks when Google reports temporary overload.
 
-For production, replace the in-memory job map with a persistent database/queue and
-store final videos in object storage rather than relying on the app filesystem.
+The complete video workflow additionally requires:
+- A RunPod Serverless endpoint built from `worker/Dockerfile`.
+- `RUNPOD_ENDPOINT_ID` and `RUNPOD_API_KEY` in the Vercel project.
+- `GEMINI_API_KEY`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the RunPod worker environment.
+- A private Supabase Storage bucket. The worker creates it if it does not exist.
+- Gemini API video-generation access and billing enabled for Gemini Omni Flash.
 
+Optional background music requires `LYRIA_ENABLED=true` and Lyria API access. It is deliberately disabled by default to prevent unexpected charges.
 
-## Review-before-posting workflow
+## Environment variables
 
-Every generated job is saved in `data/<job-id>.json` and appears in **History**.
-Generation never posts automatically. After the final video is ready, the UI shows:
+See `.env.example` for the complete list and which runtime receives each value. Never put API keys in browser JavaScript, HTML, public GitHub files or user-visible logs.
 
-- **DOWNLOAD VIDEO** — save it and post manually.
-- **POST AUTOMATICALLY** — explicitly approve the reviewed video and trigger the
-  connected TikTok/YouTube publishing adapters.
+## Safety and publishing
 
-This review gate is deliberate: AHM should never publish a generated video to the
-user's pages without the user approving it first.
+AHM generates a downloadable video but does not automatically publish it to social accounts. Publishing should remain a separate explicit user action after review.
 
-For real production, the final MP4 should also be copied to durable object storage
-and the history database should store its permanent URL. The starter keeps the
-architecture simple until the RunPod worker and storage provider are connected.
+## Deployment boundaries
 
-## Free-first environment variables
-
-The story-planning API uses Google Gemini. Add the following in Vercel
-(Project → Settings → Environment Variables):
-
-- `GEMINI_API_KEY` — required; paste the secret key created in Google AI Studio.
-- `GEMINI_MODEL` — optional; defaults to `gemini-2.5-flash`.
-
-Set these for **Production** and **Preview** if you want both deployments to use
-the story planner. Redeploy after adding or changing environment variables.
-
-Do not put API keys in browser JavaScript, HTML, GitHub commits, or public messages.
-The server reads the key from the environment. The story-planning endpoint is
-`POST /api/story/plan` and accepts JSON with an optional `idea` and
-`targetDuration`.
-
-Important: this endpoint creates a story and scene-production plan only. It does
-not claim to generate a finished video. A real visual/video provider and a final
-rendering pipeline still need to be connected before AHM can offer a complete
-downloadable cinematic video.
+Development work is on `feature/ahm-autonomous-generation-foundation`. Production `main` is not modified or promoted automatically.
