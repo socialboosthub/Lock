@@ -40,7 +40,7 @@ The worker supports original instrumental tracks from Lyria 3.5. It is disabled 
    - `GEMINI_TTS_VOICE=Charon`
    - `LYRIA_ENABLED=false` until music billing is approved
 4. Set the endpoint execution timeout high enough for multiple scene generations and FFmpeg assembly. A full video can take several minutes.
-5. Copy the endpoint ID and API key into Vercel as `RUNPOD_ENDPOINT_ID` and `RUNPOD_API_KEY`.
+5. Copy the endpoint ID and API key into Vercel as `RUNPOD_ENDPOINT_ID` and `RUNPOD_API_KEY`. Set `AHM_VIDEO_WORKER_READY=true` in Vercel only after the worker image is deployed, worker secrets are saved and a real end-to-end render has passed.
 
 The worker does not require a ComfyUI GPU model because Gemini Omni generates the clips remotely; the worker handles orchestration, FFmpeg and storage.
 
