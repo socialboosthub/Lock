@@ -25,6 +25,7 @@
   const STORE = "videos";
   const CHARACTER_STORE = "characters";
   const ACTIVE_JOB_KEY = "ahm-studio-active-video-job-v1";
+  const VIDEO_HISTORY_KEY = "ahm-studio-generated-video-history-v1";
 
   function openDB() {
     return new Promise((resolve, reject) => {
@@ -1212,6 +1213,14 @@
           title.textContent = story.title + " · Finished video";
           download.replaceChildren(title, player, link);
           download.classList.remove("hidden");
+          await saveGeneratedVideoHistory({
+            id: state.videoJobId || "job_" + Date.now(),
+            title: story.title || "AHM Studio video",
+            url: url.href,
+            createdAt: Date.now(),
+            durationSec: result.video.durationSec || story.durationSec,
+            sceneCount: result.video.sceneCount || story.scenes.length
+          });
           updateProgress(1, "VIDEO READY");
           try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
           state.videoJobId = null;
@@ -1244,6 +1253,64 @@
     if (state.generatedStory) generateFullVideo();
     else renderVideo();
   });
+
+  function readGeneratedVideoHistory() {
+    try {
+      const items = JSON.parse(localStorage.getItem(VIDEO_HISTORY_KEY) || "[]");
+      return Array.isArray(items) ? items.filter(item => {
+        try { return item && item.id && item.title && new URL(item.url).protocol === "https:"; }
+        catch { return false; }
+      }) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function saveGeneratedVideoHistory(item) {
+    try {
+      const items = readGeneratedVideoHistory().filter(existing => existing.id !== item.id);
+      items.unshift(item);
+      localStorage.setItem(VIDEO_HISTORY_KEY, JSON.stringify(items.slice(0, 10)));
+      await loadGeneratedVideoHistory();
+    } catch (error) {
+      console.warn("Could not save generated video history on this device.", error);
+    }
+  }
+
+  async function loadGeneratedVideoHistory() {
+    const host = $("generatedVideoHistory");
+    if (!host) return;
+    const items = readGeneratedVideoHistory();
+    if (!items.length) {
+      host.className = "historyEmpty";
+      host.textContent = "Your generated MP4s will appear here.";
+      return;
+    }
+    host.className = "generatedVideoHistory";
+    host.innerHTML = items.map(item => `
+      <article class="historyItem generatedVideoItem">
+        <div class="meta">
+          <strong>${escapeHtml(item.title)}</strong>
+          <small>${new Date(item.createdAt).toLocaleString()} · ${Number(item.durationSec) || 0}s · ${Number(item.sceneCount) || 0} scenes</small>
+        </div>
+        <div class="row wrap">
+          <a class="downloadLink" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">Open / download MP4</a>
+          <button class="textButton" data-remove-generated-video="${escapeHtml(item.id)}">Remove</button>
+        </div>
+      </article>
+    `).join("");
+    host.querySelectorAll("[data-remove-generated-video]").forEach(button => {
+      button.addEventListener("click", async () => {
+        const remaining = readGeneratedVideoHistory().filter(item => item.id !== button.dataset.removeGeneratedVideo);
+        try {
+          localStorage.setItem(VIDEO_HISTORY_KEY, JSON.stringify(remaining));
+          await loadGeneratedVideoHistory();
+        } catch (error) {
+          alert("Could not update video history: " + error.message);
+        }
+      });
+    });
+  }
 
   async function loadHistory() {
     const host = $("historyList");
@@ -1493,5 +1560,6 @@
   buildCanvasWelcome();
   loadHistory();
   loadCharacterLibrary();
+  loadGeneratedVideoHistory();
   restoreActiveVideoJob();
 })();
