@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, "/app")
-from handler import assemble_final_video, make_srt, normalize_clip, run_ffmpeg
+from handler import assemble_final_video, fit_voice_clip, make_srt, normalize_clip, probe_audio_duration, run_ffmpeg
 
 
 def main():
@@ -28,11 +28,33 @@ def main():
             normalized.append(video)
             ambience.append(fx)
 
-        voice = work / "voice.wav"
+        raw_voice_1 = work / "raw_voice_1.wav"
+        raw_voice_2 = work / "raw_voice_2.wav"
         run_ffmpeg([
             "ffmpeg", "-y", "-f", "lavfi", "-i",
-            "sine=frequency=660:sample_rate=24000:duration=4",
-            "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", str(voice),
+            "sine=frequency=660:sample_rate=24000:duration=3",
+            "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", str(raw_voice_1),
+        ])
+        run_ffmpeg([
+            "ffmpeg", "-y", "-f", "lavfi", "-i",
+            "sine=frequency=550:sample_rate=24000:duration=1",
+            "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", str(raw_voice_2),
+        ])
+        voice_part_1 = work / "voice_part_1.wav"
+        voice_part_2 = work / "voice_part_2.wav"
+        fit_voice_clip(raw_voice_1, voice_part_1, 2)
+        fit_voice_clip(raw_voice_2, voice_part_2, 2)
+        assert abs(probe_audio_duration(voice_part_1) - 2) < 0.1
+        assert abs(probe_audio_duration(voice_part_2) - 2) < 0.1
+        voice_list = work / "voice_list.txt"
+        voice_list.write_text(
+            f"file '{voice_part_1.as_posix()}'\\nfile '{voice_part_2.as_posix()}'\\n",
+            encoding="utf-8",
+        )
+        voice = work / "voice.wav"
+        run_ffmpeg([
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(voice_list),
+            "-c", "copy", str(voice),
         ])
         subtitles = work / "captions.srt"
         make_srt({
