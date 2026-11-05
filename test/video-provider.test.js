@@ -54,8 +54,6 @@ test("video provider reports missing RunPod configuration without sending a requ
     else process.env.AHM_VIDEO_WORKER_READY = previous.ready;
     if (previous.gemini === undefined) delete process.env.GEMINI_API_KEY;
     else process.env.GEMINI_API_KEY = previous.gemini;
-    if (previous.ready === undefined) delete process.env.AHM_VIDEO_WORKER_READY;
-    else process.env.AHM_VIDEO_WORKER_READY = previous.ready;
   }
 });
 
@@ -64,6 +62,7 @@ test("video provider submits a complete story to RunPod Serverless", async () =>
     endpoint: process.env.RUNPOD_ENDPOINT_ID,
     key: process.env.RUNPOD_API_KEY,
     gemini: process.env.GEMINI_API_KEY,
+    ready: process.env.AHM_VIDEO_WORKER_READY,
   };
   process.env.RUNPOD_ENDPOINT_ID = "endpoint-test";
   process.env.RUNPOD_API_KEY = "runpod-test";
@@ -84,13 +83,21 @@ test("video provider submits a complete story to RunPod Serverless", async () =>
     else process.env.RUNPOD_API_KEY = previous.key;
     if (previous.gemini === undefined) delete process.env.GEMINI_API_KEY;
     else process.env.GEMINI_API_KEY = previous.gemini;
+    if (previous.ready === undefined) delete process.env.AHM_VIDEO_WORKER_READY;
+    else process.env.AHM_VIDEO_WORKER_READY = previous.ready;
   }
 });
 
 test("video provider returns the final MP4 URL when the worker completes", async () => {
-  const previous = { endpoint: process.env.RUNPOD_ENDPOINT_ID, key: process.env.RUNPOD_API_KEY, ready: process.env.AHM_VIDEO_WORKER_READY };
+  const previous = {
+    endpoint: process.env.RUNPOD_ENDPOINT_ID,
+    key: process.env.RUNPOD_API_KEY,
+    gemini: process.env.GEMINI_API_KEY,
+    ready: process.env.AHM_VIDEO_WORKER_READY
+  };
   process.env.RUNPOD_ENDPOINT_ID = "endpoint-test";
   process.env.RUNPOD_API_KEY = "runpod-test";
+  process.env.GEMINI_API_KEY = "gemini-test";
   process.env.AHM_VIDEO_WORKER_READY = "true";
   const mock = mockResponse({
     status: "COMPLETED",
@@ -114,5 +121,9 @@ test("video provider returns the final MP4 URL when the worker completes", async
     else process.env.RUNPOD_ENDPOINT_ID = previous.endpoint;
     if (previous.key === undefined) delete process.env.RUNPOD_API_KEY;
     else process.env.RUNPOD_API_KEY = previous.key;
+    if (previous.gemini === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previous.gemini;
+    if (previous.ready === undefined) delete process.env.AHM_VIDEO_WORKER_READY;
+    else process.env.AHM_VIDEO_WORKER_READY = previous.ready;
   }
 });
