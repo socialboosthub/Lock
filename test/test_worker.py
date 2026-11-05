@@ -29,15 +29,19 @@ class AHMWorkerTests(unittest.TestCase):
     def test_scene_prompt_keeps_style_and_continuity(self):
         story = {
             "title": "Speed of Light",
-            "characters": [{"name": "Scientist", "description": "Blue coat, silver glasses"}],
+            "characters": [
+                {"id": "char_1", "name": "Scientist", "description": "Blue coat, silver glasses"},
+                {"id": "char_2", "name": "Unrelated Guide", "description": "Red hat and green scarf"},
+            ],
             "environments": [{"name": "Lab", "description": "Dark blue physics laboratory"}],
             "props": [{"name": "Photon", "description": "Glowing golden particle"}],
         }
-        scene = {"durationSec": 6, "action": "A photon races past the camera.", "visualPrompt": "Macro shot"}
+        scene = {"durationSec": 6, "action": "A photon races past the camera.", "visualPrompt": "Macro shot", "characters": ["char_1"]}
         prompt = scene_prompt(story, scene, 0, 4)
         self.assertIn("vertical 9:16", prompt)
         self.assertIn("Blue coat, silver glasses", prompt)
         self.assertIn("Glowing golden particle", prompt)
+        self.assertNotIn("Unrelated Guide", prompt)
         self.assertIn("Do not add", prompt)
 
     def test_video_input_attaches_character_reference_images(self):
