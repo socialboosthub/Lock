@@ -191,20 +191,84 @@ def audio_block_data(interaction):
     raise RuntimeError("Gemini returned no audio data.")
 
 
-def write_tts_wav(script, destination, voice=None):
-    prompt = (
-        "Read the following narration verbatim. Do not add, omit, paraphrase or repeat any words. "
-        "Use a confident, warm, energetic documentary storyteller delivery with clear diction, "
-        "natural pauses and expressive emphasis.\n\n" + script
-    )
+def build_tts_request(story, narrator_voice=None):
+    characters = {str(item.get("id")): item for item in story.get("characters", []) if item.get("id")}
+    segments = []
+    for scene in story.get("scenes", []):
+        narration = str(scene.get("narration") or "").strip()
+        if narration:
+            segments.append({"speaker": "Narrator", "text": narration, "style": "confident, warm documentary narration with clear diction"})
+        dialogue = scene.get("dialogue") or []
+        if isinstance(dialogue, dict):
+            dialogue = [dialogue]
+        for line in dialogue if isinstance(dialogue, list) else []:
+            if not isinstance(line, dict):
+                continue
+            character_id = str(line.get("character") or line.get("speaker") or "")
+            character = characters.get(character_id, {})
+            speaker = str(character.get("name") or line.get("speaker") or character_id or "Character")
+            spoken = str(line.get("line") or line.get("text") or "").strip()
+            if spoken:
+                segments.append({"speaker": speaker, "text": spoken, "style": "natural expressive character dialogue"})
+    if not segments:
+        narration = str(story.get("narration") or "").strip()
+        if narration:
+            segments.append({"speaker": "Narrator", "text": narration, "style": "confident, warm documentary narration with clear diction"})
+    if not segments:
+        raise RuntimeError("The Director plan contains no spoken narration or dialogue.")
+
+    speaker_order = list(dict.fromkeys(item["speaker"] for item in segments))
+    if len(speaker_order) == 1:
+        script = segments[0]["text"] if len(segments) == 1 else "\\n\\n".join(item["text"] for item in segments)
+        return {
+            "input": "Read the following narration verbatim. Do not add, omit, paraphrase or repeat words. Use " +
+                     segments[0]["style"] + ".\\n\\n" + script,
+            "speech_config": [{"voice": narrator_voice or TTS_VOICE}],
+        }
+
+    primary = "Narrator" if "Narrator" in speaker_order else speaker_order[0]
+    secondary = next(name for name in speaker_order if name != primary)
+    voice_names = {"Charon", "Kore", "Puck", "Aoede", "Fenrir", "Zephyr", "Leda", "Orus"}
+    def character_voice(name, fallback):
+        item = next((value for value in story.get("characters", []) if value.get("name") == name), {})
+        selected = item.get("voice")
+        return selected if selected in voice_names else fallback
+
+    primary_voice = narrator_voice or TTS_VOICE if primary == "Narrator" else character_voice(primary, "Puck")
+    secondary_voice = character_voice(secondary, "Kore")
+    content = []
+    for segment in segments:
+        speaker = segment["speaker"] if segment["speaker"] in (primary, secondary) else secondary
+        content.append({
+            "type": "text",
+            "text": segment["text"],
+            "annotations": [{
+                "type": "speech_metadata",
+                "speaker": speaker,
+                "style": segment["style"],
+            }],
+        })
+    return {
+        "input": [{"type": "user_input", "content": content}],
+        "speech_config": {
+            "speakers": [
+                {"speaker": primary, "voice": primary_voice},
+                {"speaker": secondary, "voice": secondary_voice},
+            ]
+        },
+    }
+
+
+def write_tts_wav(story, destination, voice=None):
+    request = build_tts_request(story, voice)
     errors = []
     for model in [TTS_MODEL, TTS_FALLBACK_MODEL]:
         try:
             interaction = api_request("/interactions", "POST", {
                 "model": model,
-                "input": prompt,
+                "input": request["input"],
                 "response_format": {"type": "audio"},
-                "generation_config": {"speech_config": [{"voice": voice or TTS_VOICE}]},
+                "generation_config": {"speech_config": request["speech_config"]},
             }, timeout=300)
             interaction = wait_for_interaction(interaction, timeout=300)
             audio = audio_block_data(interaction)
@@ -221,8 +285,7 @@ def write_tts_wav(script, destination, voice=None):
         except Exception as error:
             errors.append(f"{model}: {error}")
             log(f"TTS model {model} failed: {error}")
-    raise RuntimeError("Narration generation failed. " + " | ".join(errors))
-
+    raise RuntimeError("Narration/dialogue generation failed. " + " | ".join(errors))
 
 def generate_music(story, destination):
     settings = story.get("productionSettings") or {}
@@ -400,7 +463,7 @@ def process_job(event):
 
         voice = work / "narration.wav"
         settings = story.get("productionSettings") or {}
-        write_tts_wav(str(story.get("narration") or ""), voice, settings.get("voice"))
+        write_tts_wav(story, voice, settings.get("voice"))
         music = generate_music(story, work / "music.mp3")
         subtitles = make_srt(story, work / "captions.srt")
         final = work / "final.mp4"
