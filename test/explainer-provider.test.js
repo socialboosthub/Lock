@@ -50,7 +50,9 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
   };
 
   try {
-    const result = await startExplainerGeneration("Speed of light");
+    const result = await startExplainerGeneration("Speed of light", "natural", [
+      { name: "Professor Nova", description: "Silver glasses, navy coat, curly black hair." }
+    ]);
     assert.equal(result.status, "completed");
     assert.equal(result.story.scenes.length, 2);
     assert.equal(requests.length, 2);
@@ -61,6 +63,8 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
     const sent = JSON.parse(requests[1].body);
     assert.equal(sent.generationConfig.responseMimeType, "application/json");
     assert.match(sent.contents[0].parts[0].text, /Speed of light/);
+    assert.match(sent.contents[0].parts[0].text, /Professor Nova/);
+    assert.match(sent.contents[0].parts[0].text, /Silver glasses/);
   } finally {
     https.request = originalRequest;
     if (originalKey === undefined) delete process.env.GEMINI_API_KEY;
