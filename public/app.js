@@ -1412,7 +1412,7 @@
       : "Those characters are already saved in your library.";
   });
 
-  function buildCanvasWelcome() {  function buildCanvasWelcome() {
+  function buildCanvasWelcome() {
     ctx.fillStyle = "#0e1724";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
