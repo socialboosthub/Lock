@@ -148,7 +148,9 @@ app.get("/api/explainer/plan/:jobId", async (req, res) => {
       ok: true,
       status: "completed",
       story: result.story,
-      video: { status: "not_started", message: "The explainer plan is ready. Genuine AI video generation is not connected yet." }
+      video: isVideoProviderConfigured()
+        ? { status: "ready", message: "The production worker is connected. You can generate the complete cinematic MP4." }
+        : { status: "not_configured", message: "The AI plan is ready, but the RunPod video worker and storage must be configured before rendering." }
     });
   } catch (error) {
     console.error("AHM explainer job check failed:", error.message);
@@ -181,7 +183,9 @@ app.get("/api/story/plan/:jobId", async (req, res) => {
       ok: true,
       status: "completed",
       story: result.story,
-      video: { status: "not_started", message: "Story planning is ready. Video generation is not connected yet." }
+      video: isVideoProviderConfigured()
+        ? { status: "ready", message: "The production worker is connected. You can generate the complete cinematic MP4." }
+        : { status: "not_configured", message: "The story plan is ready, but the RunPod video worker and storage must be configured before rendering." }
     });
   } catch (error) {
     console.error("AHM story job check failed:", error.message);
