@@ -4,7 +4,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, "/workspace")
+sys.path.insert(0, "/app")
 from handler import assemble_final_video, make_srt, normalize_clip, run_ffmpeg
 
 
