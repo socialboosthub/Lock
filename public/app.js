@@ -24,6 +24,7 @@
   const DB_NAME = "ahm-studio-free-v81";
   const STORE = "videos";
   const CHARACTER_STORE = "characters";
+  const ACTIVE_JOB_KEY = "ahm-studio-active-video-job-v1";
 
   function openDB() {
     return new Promise((resolve, reject) => {
@@ -183,7 +184,13 @@
   }
 
   function buildScenes() {
+    if (state.videoJobId) {
+      alert("A video is still processing. Resume or finish that job before rebuilding scenes.");
+      return;
+    }
     state.generatedStory = null;
+    state.videoJobId = null;
+    try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
     $("savePlanCharactersBtn").disabled = true;
     $("renderBtn").disabled = false;
     $("renderBtn").textContent = "Render local image preview";
@@ -715,6 +722,10 @@
   }
 
   async function generateAiStory() {
+    if (state.videoJobId) {
+      alert("A video is still processing. Resume or finish that job before starting a new plan.");
+      return;
+    }
     const idea = $("scriptInput").value.trim();
     const status = $("aiStoryStatus");
     const button = $("aiStoryBtn");
@@ -1141,22 +1152,34 @@
     updateProgress(0, "STARTING AI VIDEO");
 
     try {
-      const response = await fetch("/api/explainer/video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          story,
-          voice: $("voiceStyle")?.value || "Charon",
-          musicEnabled: $("musicEnabled")?.checked === true
-        })
-      });
-      const started = await response.json();
-      if (!response.ok || !started.ok || !started.jobId) {
-        throw new Error(started.error || "AHM could not start the video production job.");
+      if (!state.videoJobId) {
+        const response = await fetch("/api/explainer/video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            story,
+            voice: $("voiceStyle")?.value || "Charon",
+            musicEnabled: $("musicEnabled")?.checked === true
+          })
+        });
+        const started = await response.json();
+        if (!response.ok || !started.ok || !started.jobId) {
+          throw new Error(started.error || "AHM could not start the video production job.");
+        }
+        state.videoJobId = started.jobId;
+        try {
+          localStorage.setItem(ACTIVE_JOB_KEY, JSON.stringify({
+            jobId: state.videoJobId,
+            story,
+            startedAt: Date.now()
+          }));
+        } catch (storageError) {
+          console.warn("Could not save the active video job for resume.", storageError);
+        }
+        status.textContent = "Video production started. Generating cinematic scenes, narration, sound and subtitles…";
+      } else {
+        status.textContent = "Resuming your existing AHM video production job…";
       }
-
-      state.videoJobId = started.jobId;
-      status.textContent = "Video production started. Generating cinematic scenes, narration, sound and subtitles…";
       $("previewCaption").textContent = "AHM is rendering your complete video in the production worker.";
       const deadline = Date.now() + 30 * 60 * 1000;
 
@@ -1189,11 +1212,15 @@
           download.replaceChildren(title, player, link);
           download.classList.remove("hidden");
           updateProgress(1, "VIDEO READY");
+          try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
+          state.videoJobId = null;
           status.textContent = "Complete MP4 ready · " + (result.video.sceneCount || story.scenes.length) + " generated scenes · narration and subtitles included.";
           $("previewCaption").textContent = "Your finished cinematic explainer is ready to watch and download.";
           return;
         }
         if (result.status === "failed") {
+          try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
+          state.videoJobId = null;
           throw new Error(result.error || "The video production worker failed.");
         }
         const label = String(result.status || "processing").replace(/_/g, " ").toUpperCase();
@@ -1206,7 +1233,9 @@
       updateProgress(0, "VIDEO GENERATION FAILED");
     } finally {
       button.disabled = false;
-      button.textContent = "Generate complete cinematic video";
+      button.textContent = state.videoJobId
+        ? "Resume video generation"
+        : "Generate complete cinematic video";
     }
   }
 
@@ -1445,7 +1474,23 @@
     ctx.fillRect(55, canvas.height * 0.57, canvas.width - 110, 3);
   }
 
+  function restoreActiveVideoJob() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ACTIVE_JOB_KEY) || "null");
+      if (!saved?.jobId || !saved?.story?.scenes?.length) return;
+      state.generatedStory = saved.story;
+      state.videoJobId = saved.jobId;
+      $("renderBtn").disabled = false;
+      $("renderBtn").textContent = "Resume video generation";
+      $("savePlanCharactersBtn").disabled = !(saved.story.characters || []).length;
+      $("aiStoryStatus").textContent = "A video production job is saved on this device. Tap Resume video generation to check its progress.";
+    } catch (error) {
+      console.warn("Could not restore the active AHM video job.", error);
+    }
+  }
+
   buildCanvasWelcome();
   loadHistory();
   loadCharacterLibrary();
+  restoreActiveVideoJob();
 })();
