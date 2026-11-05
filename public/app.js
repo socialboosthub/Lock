@@ -760,7 +760,7 @@
   });
 
   $("visualStyle").addEventListener("change", () => {
-    if (state.scenes.length) buildScenes();
+    if (state.scenes.length && !state.generatedStory) buildScenes();
   });
 
   $("cancelBtn").addEventListener("click", () => {
