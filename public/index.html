@@ -25,7 +25,7 @@
 
       <div class="notice">
         <strong>Building AHM's production engine:</strong>
-        Topic-to-explainer planning is connected to Gemini. Genuine AI footage, automatic narration and final MP4 rendering are still being integrated; AHM will never label a placeholder as a finished video.
+        The complete production workflow is being connected: AI-directed scenes, cinematic video clips, generated narration, scene sound, subtitles, background music and MP4 assembly. Real video rendering requires the production worker, storage and video-model access to be configured; AHM will never label a placeholder as a finished video.
       </div>
 
       <div class="toolLinks">
@@ -57,13 +57,13 @@
         <button id="aiStoryBtn" class="primary">Create AI explainer plan</button>
         <button id="sceneBtn" class="secondary">Build basic outline manually</button>
       </div>
-      <p id="aiStoryStatus" class="hint" role="status">AHM creates the explanation and visual production plan first. No finished video has been rendered yet.</p>
+      <p id="aiStoryStatus" class="hint" role="status">Create the AI Director plan first. Then generate the complete cinematic video with voice, sound and subtitles.</p>
 
       <label class="uploadBox" for="voiceFile">
         <span class="uploadIcon">🎙️</span>
         <span>
           <strong>Optional: use your own narration</strong>
-          <small>Not required. AHM's automatic voice pipeline is planned.</small>
+          <small>AHM generates narration automatically for complete video jobs. This upload is for the local editor.</small>
           <em id="voiceName">No narration uploaded</em>
         </span>
       </label>
@@ -73,7 +73,7 @@
         <span class="uploadIcon">🎵</span>
         <span>
           <strong>Optional: add your own music</strong>
-          <small>Optional. Use audio you have permission to use.</small>
+          <small>AI background music is available when the music provider is enabled. This upload is for the local editor.</small>
           <em id="musicName">No music uploaded</em>
         </span>
       </label>
@@ -85,7 +85,7 @@
         <span class="step">02</span>
         <div>
           <h2>AI scene director</h2>
-          <p>Review how each scene explains the topic, with planned camera movement, transitions and continuity. Genuine footage generation is the next integration.</p>
+          <p>Review the AI-directed shots, camera movement, transitions and continuity before generating the final video.</p>
         </div>
       </div>
 
@@ -122,7 +122,7 @@
         <span class="step">03</span>
         <div>
           <h2>Render your video</h2>
-          <p>The final renderer will combine generated video clips, narration, subtitles, music and sound effects.</p>
+          <p>The production worker generates each cinematic clip, creates narration, mixes scene sound and optional original music, burns in timed subtitles and exports the final MP4.</p>
         </div>
       </div>
 
@@ -156,7 +156,7 @@
 
         <div class="previewInfo">
           <strong id="previewTitle">Your video preview</strong>
-          <p id="previewCaption">Your AI-directed story plan will appear here. Real video generation is being connected.</p>
+          <p id="previewCaption">Your AI-directed video plan and final production preview will appear here.</p>
           <div id="renderStatus" class="status">READY</div>
           <div class="progressTrack"><div id="progressBar"></div></div>
           <small id="progressText">0%</small>
@@ -165,7 +165,7 @@
 
       <div class="row wrap renderButtons">
         <button id="previewBtn" class="secondary">Preview motion</button>
-        <button id="renderBtn" class="primary" disabled>AI video generation · coming next</button>
+        <button id="renderBtn" class="primary" disabled>Create AI plan first</button>
         <button id="cancelBtn" class="secondary" disabled>Cancel</button>
       </div>
 
