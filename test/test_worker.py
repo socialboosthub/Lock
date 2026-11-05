@@ -18,8 +18,8 @@ class AHMWorkerTests(unittest.TestCase):
         self.assertEqual([item["durationSec"] for item in result], [10, 10, 4])
         self.assertIn("Continue the same action", result[1]["action"])
 
-    def test_short_scene_duration_is_clamped(self):
-        self.assertEqual(scene_duration({"durationSec": 1}), 3)
+    def test_short_scene_duration_is_preserved_for_final_trim(self):
+        self.assertEqual(scene_duration({"durationSec": 1}), 1)
         self.assertEqual(scene_duration({"durationSec": 40}), 10)
 
     def test_scene_prompt_keeps_style_and_continuity(self):
