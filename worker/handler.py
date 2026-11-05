@@ -447,7 +447,9 @@ def handler(event):
         return process_job(event)
     except Exception as error:
         log(f"JOB FAILED: {error}")
-        return {"status": "failed", "error": str(error)}
+        # Let RunPod mark the job as FAILED so the website can display the
+        # provider's real error instead of treating an error object as a video.
+        raise
 
 
 if __name__ == "__main__":
