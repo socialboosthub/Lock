@@ -53,8 +53,8 @@ app.get("/api/health", (_req, res) => {
     version: "9.0.0",
     storyProvider: isStoryProviderConfigured() ? "configured" : "not_configured",
     videoProvider: isVideoProviderConfigured() ? "configured" : "not_configured",
-    voiceProvider: isStoryProviderConfigured() ? "gemini_tts_available" : "not_configured",
-    musicProvider: process.env.LYRIA_ENABLED === "true" ? "enabled" : "optional_not_enabled"
+    voiceProvider: isVideoProviderConfigured() ? "configured" : "worker_not_configured",
+    musicProvider: process.env.LYRIA_ENABLED === "true" && isVideoProviderConfigured() ? "enabled" : "optional_not_enabled"
   });
 });
 
