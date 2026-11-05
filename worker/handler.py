@@ -162,11 +162,36 @@ Maintain the exact recurring character designs, props, lighting logic and world 
 """
 
 
-def generate_video_clip(story, scene, index, total, destination):
+def build_video_input(prompt, reference_images=None):
+    paths = list(reference_images or [])[:3]
+    if not paths:
+        return prompt
+    content = [{
+        "type": "text",
+        "text": prompt + "\\n\\nThe attached image(s) are exact visual identity references for returning characters. Preserve facial features, hair, clothing, proportions and distinctive marks. Do not copy the reference pose, framing or background."
+    }]
+    for path in paths:
+        content.append({
+            "type": "image",
+            "mime_type": "image/jpeg",
+            "data": base64.b64encode(Path(path).read_bytes()).decode("ascii"),
+        })
+    return content
+
+
+def extract_character_reference_frame(video_path, destination):
+    run_ffmpeg([
+        "ffmpeg", "-y", "-ss", "1", "-i", str(video_path),
+        "-frames:v", "1", "-vf", "scale=512:-1", "-q:v", "4", str(destination),
+    ])
+    return destination
+
+
+def generate_video_clip(story, scene, index, total, destination, reference_images=None):
     prompt = scene_prompt(story, scene, index, total)
     result = api_request("/interactions", "POST", {
         "model": VIDEO_MODEL,
-        "input": prompt,
+        "input": build_video_input(prompt, reference_images),
         "response_format": {
             "type": "video",
             "aspect_ratio": "9:16",
@@ -455,13 +480,28 @@ def process_job(event):
         normalized = []
         ambience = []
         total_duration = min(120, max(30, int(story.get("durationSec") or 45)))
+        character_references = {}
         for index, scene in enumerate(scenes):
             duration = scene_duration(scene)
             raw = work / f"scene_{index + 1:02}.mp4"
             video = work / f"normalized_{index + 1:02}.mp4"
             fx = work / f"ambience_{index + 1:02}.wav"
+            scene_character_ids = scene.get("characters") or []
+            reference_images = [
+                character_references[character_id]
+                for character_id in scene_character_ids
+                if character_id in character_references
+            ][:3]
             log(f"Generating cinematic scene {index + 1}/{len(scenes)}")
-            generate_video_clip(story, scene, index, len(scenes), raw)
+            generate_video_clip(story, scene, index, len(scenes), raw, reference_images)
+            for character_id in scene_character_ids:
+                if character_id not in character_references:
+                    reference_path = work / f"character_{str(character_id).replace('/', '_')}.jpg"
+                    try:
+                        extract_character_reference_frame(raw, reference_path)
+                        character_references[character_id] = reference_path
+                    except Exception as error:
+                        log(f"Could not create visual reference for {character_id}: {error}")
             normalize_clip(raw, video, duration, fx)
             normalized.append(video)
             ambience.append(fx)
