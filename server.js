@@ -2,7 +2,9 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
+const crypto = require("crypto");
 const { startStoryGeneration, getStoryGeneration, startExplainerGeneration, getExplainerGeneration, isStoryProviderConfigured } = require("./lib/providers/llm");
+const { startVideoJob, getVideoJob, isVideoProviderConfigured } = require("./lib/providers/video");
 
 const app = express();
 app.disable("x-powered-by");
@@ -16,7 +18,9 @@ app.get("/api/health", (_req, res) => {
     app: "AHM Studio",
     version: "9.0.0",
     storyProvider: isStoryProviderConfigured() ? "configured" : "not_configured",
-    videoProvider: "not_configured"
+    videoProvider: isVideoProviderConfigured() ? "configured" : "not_configured",
+    voiceProvider: isStoryProviderConfigured() ? "gemini_tts_available" : "not_configured",
+    musicProvider: process.env.LYRIA_ENABLED === "true" ? "enabled" : "optional_not_enabled"
   });
 });
 
@@ -40,6 +44,39 @@ app.post("/api/explainer/plan", async (req, res) => {
     const status = error.code === "STORY_PROVIDER_NOT_CONFIGURED" ? 503 : 502;
     console.error("AHM explainer job start failed:", error.message);
     return res.status(status).json({ error: error.message || "Could not start explainer planning." });
+  }
+});
+
+app.post("/api/explainer/video", async (req, res) => {
+  try {
+    const story = req.body?.story;
+    if (!story || !Array.isArray(story.scenes) || !story.scenes.length) {
+      return res.status(400).json({ ok: false, error: "Generate a complete AI Director plan before creating the video." });
+    }
+    if (!story.narration || !story.title) {
+      return res.status(400).json({ ok: false, error: "The AI Director plan is missing its title or narration." });
+    }
+    const jobId = crypto.randomUUID();
+    const job = await startVideoJob({ jobId, story });
+    return res.status(202).json({ ok: true, jobId: job.id, status: job.status });
+  } catch (error) {
+    const status = error.code === "VIDEO_PROVIDER_NOT_CONFIGURED" ? 503 : 502;
+    console.error("AHM video job start failed:", error.message);
+    return res.status(status).json({ ok: false, error: error.message || "Could not start cinematic video generation." });
+  }
+});
+
+app.get("/api/explainer/video/:jobId", async (req, res) => {
+  try {
+    const jobId = String(req.params.jobId || "");
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(jobId)) {
+      return res.status(400).json({ ok: false, error: "Invalid video job ID." });
+    }
+    const result = await getVideoJob(jobId);
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error("AHM video job status failed:", error.message);
+    return res.status(502).json({ ok: false, error: error.message || "Could not check video generation status." });
   }
 });
 
