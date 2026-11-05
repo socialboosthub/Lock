@@ -413,12 +413,12 @@ def assemble_final_video(normalized, ambience, voice, music, subtitles, total_du
     if not normalized or not ambience:
         raise RuntimeError("The video assembly step received no generated scenes or scene audio.")
     concat_file = Path(work) / "clips.txt"
-    concat_file.write_text("".join(f"file '{Path(path).as_posix()}'\\n" for path in normalized), encoding="utf-8")
+    concat_file.write_text("".join(f"file '{Path(path).as_posix()}'\n" for path in normalized), encoding="utf-8")
     video_only = Path(work) / "picture.mp4"
     run_ffmpeg(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(video_only)])
 
     ambience_list = Path(work) / "ambience.txt"
-    ambience_list.write_text("".join(f"file '{Path(path).as_posix()}'\\n" for path in ambience), encoding="utf-8")
+    ambience_list.write_text("".join(f"file '{Path(path).as_posix()}'\n" for path in ambience), encoding="utf-8")
     ambience_all = Path(work) / "ambience.wav"
     run_ffmpeg(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(ambience_list), "-c", "copy", str(ambience_all)])
 
@@ -433,7 +433,7 @@ def assemble_final_video(normalized, ambience, voice, music, subtitles, total_du
         filter_parts.append("[3:a]volume=0.16[music]")
         labels.append("[music]")
     filter_parts.append("".join(labels) + f"amix=inputs={len(labels)}:duration=longest:dropout_transition=2,loudnorm=I=-16:LRA=11:TP=-1.5[audio]")
-    subtitle_filter = "subtitles=" + str(subtitles).replace(":", "\\\\:").replace("'", "\\\\'") + ":force_style='FontName=DejaVu Sans,FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110'"
+    subtitle_filter = "subtitles=" + str(subtitles).replace(":", "\\:").replace("'", "\\'") + ":force_style='FontName=DejaVu Sans,FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110'"
     command = ["ffmpeg", "-y", *inputs, "-filter_complex", ";".join(filter_parts),
                "-vf", subtitle_filter, "-map", "0:v:0", "-map", "[audio]",
                "-t", str(total_duration), "-c:v", "libx264", "-preset", "veryfast",
