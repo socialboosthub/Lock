@@ -343,7 +343,7 @@ def distribute_story_narration(story):
     narration = str(story.get("narration") or "").strip()
     if not scenes or not narration or any(scene_has_speech(scene) for scene in scenes):
         return
-    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\\s+", narration) if part.strip()]
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", narration) if part.strip()]
     if not sentences:
         sentences = [narration]
     chunks = [[] for _ in scenes]
