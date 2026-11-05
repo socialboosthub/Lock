@@ -298,8 +298,7 @@ def build_tts_request(story, narrator_voice=None):
     }
 
 
-def write_tts_wav(story, destination, voice=None):
-    request = build_tts_request(story, voice)
+def generate_tts_audio(request, destination):
     errors = []
     for model in [TTS_MODEL, TTS_FALLBACK_MODEL]:
         try:
@@ -325,6 +324,70 @@ def write_tts_wav(story, destination, voice=None):
             errors.append(f"{model}: {error}")
             log(f"TTS model {model} failed: {error}")
     raise RuntimeError("Narration/dialogue generation failed. " + " | ".join(errors))
+
+
+def scene_has_speech(scene):
+    if str(scene.get("narration") or "").strip():
+        return True
+    dialogue = scene.get("dialogue") or []
+    if isinstance(dialogue, dict):
+        dialogue = [dialogue]
+    return any(
+        isinstance(line, dict) and str(line.get("line") or line.get("text") or "").strip()
+        for line in dialogue
+    ) if isinstance(dialogue, list) else False
+
+
+def distribute_story_narration(story):
+    scenes = story.get("scenes") or []
+    narration = str(story.get("narration") or "").strip()
+    if not scenes or not narration or any(scene_has_speech(scene) for scene in scenes):
+        return
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\\s+", narration) if part.strip()]
+    if not sentences:
+        sentences = [narration]
+    chunks = [[] for _ in scenes]
+    for index, sentence in enumerate(sentences):
+        chunks[index % len(scenes)].append(sentence)
+    for scene, chunk in zip(scenes, chunks):
+        scene["narration"] = " ".join(chunk)
+
+
+def write_tts_wav(story, destination, voice=None):
+    scenes = story.get("scenes") or []
+    if not scenes:
+        return generate_tts_audio(build_tts_request(story, voice), destination)
+
+    distribute_story_narration(story)
+    work = Path(destination).parent
+    voice_parts = []
+    for index, scene in enumerate(scenes):
+        duration = scene_duration(scene)
+        fitted = work / f"voice_scene_{index + 1:02}.wav"
+        if not scene_has_speech(scene):
+            run_ffmpeg([
+                "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                "-t", str(duration), "-c:a", "pcm_s16le", str(fitted),
+            ])
+            scene["speechDurationSec"] = 0
+        else:
+            scene_story = dict(story)
+            scene_story["scenes"] = [scene]
+            scene_story["narration"] = ""
+            request = build_tts_request(scene_story, voice)
+            raw = work / f"voice_raw_{index + 1:02}.wav"
+            generate_tts_audio(request, raw)
+            scene["speechDurationSec"] = fit_voice_clip(raw, fitted, duration)
+        voice_parts.append(fitted)
+
+    concat_file = work / "voice_parts.txt"
+    concat_file.write_text("".join(f"file '{path.as_posix()}'\\n" for path in voice_parts), encoding="utf-8")
+    run_ffmpeg([
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
+        "-c", "copy", str(destination),
+    ])
+    return destination
+
 
 def generate_music(story, destination):
     settings = story.get("productionSettings") or {}
@@ -355,6 +418,38 @@ def run_ffmpeg(args):
     if result.returncode:
         raise RuntimeError("FFmpeg failed: " + result.stderr[-2500:])
     return result
+
+
+def probe_audio_duration(path):
+    result = subprocess.run([
+        "ffprobe", "-v", "error", "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1", str(path),
+    ], check=True, capture_output=True, text=True)
+    return float(result.stdout.strip())
+
+
+def fit_voice_clip(source, destination, duration):
+    source_duration = probe_audio_duration(source)
+    if source_duration <= 0:
+        raise RuntimeError("TTS returned an empty audio clip.")
+    filters = []
+    spoken_duration = min(source_duration, duration)
+    if source_duration > duration:
+        factor = source_duration / duration
+        while factor > 2.0:
+            filters.append("atempo=2.0")
+            factor /= 2.0
+        while factor < 0.5:
+            filters.append("atempo=0.5")
+            factor /= 0.5
+        filters.append(f"atempo={factor:.5f}")
+        spoken_duration = duration
+    filters.extend(["apad", f"atrim=duration={duration}"])
+    run_ffmpeg([
+        "ffmpeg", "-y", "-i", str(source), "-af", ",".join(filters),
+        "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", str(destination),
+    ])
+    return spoken_duration
 
 
 def make_srt(story, destination):
