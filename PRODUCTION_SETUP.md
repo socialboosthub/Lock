@@ -48,7 +48,11 @@ The worker does not require a ComfyUI GPU model because Gemini Omni generates th
 
 Create a Supabase project and use its project URL and service-role key as RunPod secrets. The worker creates a private `ahm-videos` bucket if missing, uploads the final MP4 and returns a seven-day signed URL. Keep the service-role key private and never place it in the browser or Vercel frontend variables.
 
-## 6. Final verification checklist
+## 6. API abuse protection
+
+The Node API applies per-IP in-memory limits to Director planning, story planning and video job creation. This is a basic safeguard for preview and single-instance use; serverless instances do not share this memory. Before opening paid generation to the public, add shared persistent rate limiting and user authentication/quotas (for example, Redis-backed limits or Supabase Auth) so visitors cannot spend the owner's generation budget.
+
+## 7. Final verification checklist
 
 - [ ] Director generates a valid plan on the preview deployment.
 - [ ] A RunPod job is accepted and reaches the worker.
