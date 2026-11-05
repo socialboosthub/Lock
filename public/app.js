@@ -706,7 +706,8 @@
     panel = document.createElement("section");
     panel.id = "directorBible";
     panel.className = "directorBible";
-    panel.innerHTML = '<div class="bibleHeading"><strong>AHM DIRECTOR BIBLE</strong><span>Continuity locked</span></div>' +
+    panel.innerHTML = '<div class="bibleHeading"><strong>AHM DIRECTOR BIBLE</strong><span>' +
+      (story.contentMode === "story" ? "Cinematic story" : "Explainer") + ' · Continuity locked</span></div>' +
       items.map(([heading, values]) => '<div class="bibleGroup"><h3>' + heading + '</h3>' +
         (values.length ? values.map(item => '<p><b>' + escapeHtml(item.name || "Unnamed") + '</b> ' +
           escapeHtml(item.description || "") +
@@ -718,6 +719,24 @@
           ':</b> ' + escapeHtml(story.storyArc[key]) + '</p>' : '').join("") + '</div>' : '') +
       (story.continuityNotes?.length ? '<div class="bibleGroup"><h3>CONTINUITY CHECKLIST</h3>' +
         story.continuityNotes.map(note => '<p>• ' + escapeHtml(note) + '</p>').join("") + '</div>' : '');
+    const characterNames = new Map((story.characters || []).map(character => [character.id, character.name]));
+    const dialogueLines = (story.scenes || []).flatMap(scene => {
+      const lines = Array.isArray(scene.dialogue) ? scene.dialogue : [];
+      return lines.filter(line => line && typeof line === "object" && (line.line || line.text))
+        .map(line => ({
+          scene: scene.id,
+          speaker: characterNames.get(line.character) || line.speaker || "Character",
+          text: line.line || line.text
+        }));
+    });
+    if (dialogueLines.length) {
+      const dialogueGroup = document.createElement("div");
+      dialogueGroup.className = "bibleGroup";
+      dialogueGroup.innerHTML = '<h3>CHARACTER DIALOGUE</h3>' +
+        dialogueLines.map(line => '<p><b>Scene ' + escapeHtml(line.scene) + ' · ' +
+          escapeHtml(line.speaker) + ':</b> ' + escapeHtml(line.text) + '</p>').join("");
+      panel.appendChild(dialogueGroup);
+    }
     const summary = document.getElementById("aiStorySummary");
     if (summary) summary.insertAdjacentElement("afterend", panel);
   }
