@@ -755,3 +755,23 @@ footer {
   width: 100%;
   margin-top: 5px;
 }
+
+
+.subSectionTitle {
+  margin: 18px 0 8px;
+  color: var(--gold);
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+.generatedVideoHistory {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 18px;
+}
+.generatedVideoItem {
+  display: grid;
+  gap: 10px;
+}
+.generatedVideoItem .row {
+  align-items: center;
+}
