@@ -232,7 +232,7 @@ def build_tts_request(story, narrator_voice=None):
     def character_voice(name, fallback):
         item = next((value for value in story.get("characters", []) if value.get("name") == name), {})
         selected = item.get("voice")
-        return selected if selected in voice_names else fallback
+        return selected if isinstance(selected, str) and selected in voice_names else fallback
 
     primary_voice = narrator_voice or TTS_VOICE if primary == "Narrator" else character_voice(primary, "Puck")
     secondary_voice = character_voice(secondary, "Kore")
@@ -329,11 +329,24 @@ def make_srt(story, destination):
     rows = []
     cue = 1
     for scene in story.get("scenes", []):
-        text = str(scene.get("narration") or scene.get("action") or "").strip()
-        if not text:
-            continue
-        phrases = scene.get("subtitlePhrases") or re.findall(r"[^.!?]+[.!?]?", text)
+        narration = str(scene.get("narration") or "").strip()
+        dialogue = scene.get("dialogue") or []
+        if isinstance(dialogue, dict):
+            dialogue = [dialogue]
+        dialogue_phrases = [
+            str(line.get("line") or line.get("text") or "").strip()
+            for line in dialogue if isinstance(line, dict)
+        ] if isinstance(dialogue, list) else []
+        phrases = list(scene.get("subtitlePhrases") or re.findall(r"[^.!?]+[.!?]?", narration))
+        if not narration:
+            phrases = []
+        phrases.extend(dialogue_phrases)
+        if not phrases:
+            fallback = str(scene.get("action") or "").strip()
+            phrases = [fallback] if fallback else []
         phrases = [str(value).strip() for value in phrases if str(value).strip()]
+        if not phrases:
+            continue
         if not phrases:
             continue
         start = float(scene.get("start", 0))
