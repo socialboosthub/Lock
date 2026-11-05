@@ -146,6 +146,9 @@
   }
 
   function buildScenes() {
+    state.generatedStory = null;
+    $("renderBtn").disabled = false;
+    $("renderBtn").textContent = "Render local image preview";
     const script = $("scriptInput").value.trim();
     if (!script) {
       alert("Bro, paste your story or narration first.");
@@ -753,7 +756,7 @@
   $("previewBtn").addEventListener("click", previewMotion);
 
   $("sceneCount").addEventListener("change", () => {
-    if (state.scenes.length) buildScenes();
+    if (state.scenes.length && !state.generatedStory) buildScenes();
   });
 
   $("visualStyle").addEventListener("change", () => {
@@ -778,12 +781,9 @@
       return;
     }
 
-    if (!state.scenes.some(scene => scene.image)) {
-      const proceed = confirm(
-        "You have not uploaded any AI images. The video will use basic placeholder scenes. Continue?"
-      );
-
-      if (!proceed) return;
+    if (!state.scenes.every(scene => scene.image)) {
+      alert("The local image-preview renderer needs an image for every scene. For automatic cinematic footage, create an AI Director plan and use Generate complete cinematic video.");
+      return;
     }
 
     state.rendering = true;
