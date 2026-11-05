@@ -724,14 +724,20 @@
     }
     button.disabled = true;
     state.generatedStory = null;
+    $("savePlanCharactersBtn").disabled = true;
     $("renderBtn").disabled = true;
     $("renderBtn").textContent = "Create AI plan first";
     status.textContent = "Starting AHM Director…";
     try {
-      const characterReferences = (await characterAll())
-        .filter(character => character.useInAI !== false)
-        .slice(0, 8)
-        .map(character => ({ name: character.name, description: character.description }));
+      let characterReferences = [];
+      try {
+        characterReferences = (await characterAll())
+          .filter(character => character.useInAI !== false)
+          .slice(0, 8)
+          .map(character => ({ name: character.name, description: character.description }));
+      } catch (storageError) {
+        console.warn("Saved character library unavailable; continuing without character references.", storageError);
+      }
       const startResponse = await fetch("/api/explainer/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -756,8 +762,14 @@
       state.generatedStory = story;
       state.videoJobId = null;
       $("savePlanCharactersBtn").disabled = !(story.characters || []).length;
-      $("renderBtn").disabled = false;
-      $("renderBtn").textContent = "Generate complete cinematic video";
+      const videoReady = started.video?.status === "ready";
+      $("renderBtn").disabled = !videoReady;
+      $("renderBtn").textContent = videoReady
+        ? "Generate complete cinematic video"
+        : "Video worker setup required";
+      if (!videoReady) {
+        status.textContent = started.video?.message || "The plan is ready, but the video worker is not connected yet.";
+      }
       $("titleInput").value = story.title || "AHM Explainer";
       $("scriptInput").value = story.narration || idea;
       state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [], continuityNotes: story.continuityNotes || [], storyArc: story.storyArc || null, titleFit: story.titleFit || null };
