@@ -46,7 +46,9 @@ app.post("/api/explainer/plan", async (req, res) => {
       ok: true,
       status: "completed",
       story: result.story,
-      video: { status: "not_started", message: "The explainer plan is ready. Genuine AI video generation is not connected yet." }
+      video: isVideoProviderConfigured()
+        ? { status: "ready", message: "The production worker is connected. You can generate the complete cinematic MP4." }
+        : { status: "not_configured", message: "The AI plan is ready, but the RunPod video worker and its storage credentials must be connected before rendering." }
     });
   } catch (error) {
     const status = error.code === "STORY_PROVIDER_NOT_CONFIGURED" ? 503 : 502;
