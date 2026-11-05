@@ -8,7 +8,7 @@ const { startVideoJob, getVideoJob, isVideoProviderConfigured } = require("./lib
 
 const app = express();
 const rateLimitBuckets = new Map();
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
 
