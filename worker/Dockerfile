@@ -20,6 +20,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY handler.py .
 
-RUN mkdir -p /workspace/outputs
+RUN mkdir -p /tmp/ahm-output
 
 CMD ["python", "-u", "handler.py"]
