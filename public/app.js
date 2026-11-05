@@ -1542,6 +1542,25 @@
     ctx.fillRect(55, canvas.height * 0.57, canvas.width - 110, 3);
   }
 
+  async function refreshProviderStatus() {
+    const target = $("providerStatus");
+    if (!target) return;
+    try {
+      const response = await fetch("/api/health", { cache: "no-store" });
+      const health = await response.json();
+      if (!response.ok || !health.ok) throw new Error("Status unavailable");
+      const items = [
+        health.storyProvider === "configured" ? "AI Director connected" : "AI Director needs setup",
+        health.videoProvider === "configured" ? "Video worker ready" : "Video worker not connected",
+        health.voiceProvider === "configured" ? "AI voices ready" : "Voice rendering awaits worker setup",
+        health.musicProvider === "enabled" ? "Background score enabled" : "Optional background score off",
+      ];
+      target.textContent = items.join(" · ");
+    } catch {
+      target.textContent = "Production connection status is unavailable right now.";
+    }
+  }
+
   function restoreActiveVideoJob() {
     try {
       const saved = JSON.parse(localStorage.getItem(ACTIVE_JOB_KEY) || "null");
@@ -1562,4 +1581,5 @@
   loadCharacterLibrary();
   loadGeneratedVideoHistory();
   restoreActiveVideoJob();
+  refreshProviderStatus();
 })();
