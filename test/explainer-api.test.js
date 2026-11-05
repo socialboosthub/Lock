@@ -39,7 +39,7 @@ test("explainer API generates a plan and includes saved character references", a
         durationSec: 45,
         narration: "Light travels at an extraordinary speed.",
         scenes: [
-          { start: 0, end: 45, narration: "Light travels at an extraordinary speed.", action: "A beam of light races through space.", visualPrompt: "A luminous beam in a dark space laboratory." }
+          { start: 0, end: 45, narration: "Light travels at an extraordinary speed.", action: "A beam of light races through space.", visualPrompt: "A luminous beam in a dark space laboratory.", subtitlePhrases: ["Light travels at an extraordinary speed."] }
         ],
         characters: [
           { id: "char_1", name: "Professor Nova", description: "Silver glasses and a navy coat." }
@@ -73,6 +73,7 @@ test("explainer API generates a plan and includes saved character references", a
     assert.equal(response.status, 200);
     assert.equal(result.ok, true);
     assert.equal(result.story.scenes.length, 1);
+    assert.deepEqual(result.story.scenes[0].subtitlePhrases, ["Light travels at an extraordinary speed."]);
     assert.equal(result.video.status, "not_configured");
     const sent = JSON.parse(sentBody);
     const prompt = sent.contents[0].parts[0].text;
