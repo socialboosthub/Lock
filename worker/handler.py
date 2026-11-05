@@ -127,17 +127,23 @@ def expand_scene_segments(scenes):
 
 
 def scene_prompt(story, scene, index, total):
+    character_ids = set(scene.get("characters") or [])
+    prop_ids = set(scene.get("props") or [])
+    environment_id = scene.get("environment")
     cast = "\n".join(
         f"{item.get('name', 'Character')}: {item.get('description', '')}"
         for item in story.get("characters", [])
+        if not character_ids or item.get("id") in character_ids
     )
     environments = "\n".join(
         f"{item.get('name', 'Environment')}: {item.get('description', '')}"
         for item in story.get("environments", [])
+        if not environment_id or item.get("id") == environment_id
     )
     props = "\n".join(
         f"{item.get('name', 'Prop')}: {item.get('description', '')}"
         for item in story.get("props", [])
+        if not prop_ids or item.get("id") in prop_ids
     )
     return f"""
 Create one self-contained {scene_duration(scene):.0f}-second vertical 9:16 cinematic 3D animated video clip.
