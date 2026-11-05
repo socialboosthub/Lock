@@ -97,8 +97,15 @@ app.post("/api/explainer/video", limitVideoJobs, async (req, res) => {
     if (!story || !Array.isArray(story.scenes) || !story.scenes.length) {
       return res.status(400).json({ ok: false, error: "Generate a complete AI Director plan before creating the video." });
     }
-    if (!story.narration || !story.title) {
-      return res.status(400).json({ ok: false, error: "The AI Director plan is missing its title or narration." });
+    const hasSpokenContent = Boolean(String(story.narration || "").trim()) ||
+      story.scenes.some(scene =>
+        Boolean(String(scene.narration || "").trim()) ||
+        (Array.isArray(scene.dialogue) && scene.dialogue.some(line =>
+          line && typeof line === "object" && String(line.line || line.text || "").trim()
+        ))
+      );
+    if (!story.title || !hasSpokenContent) {
+      return res.status(400).json({ ok: false, error: "The AI Director plan needs a title and at least one narration or dialogue line." });
     }
     const allowedVoices = new Set(["Charon", "Kore", "Puck", "Aoede", "Fenrir", "Zephyr", "Leda", "Orus"]);
     const voice = typeof req.body?.voice === "string" ? req.body.voice : "Charon";
