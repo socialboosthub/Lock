@@ -105,6 +105,27 @@ def scene_duration(scene):
     return max(3.0, min(10.0, value))
 
 
+def expand_scene_segments(scenes):
+    segments = []
+    for scene in scenes:
+        try:
+            remaining = max(3.0, float(scene.get("durationSec") or (float(scene.get("end", 0)) - float(scene.get("start", 0)))))
+        except (TypeError, ValueError):
+            remaining = 6.0
+        part = 0
+        while remaining > 0.01:
+            length = min(10.0, remaining)
+            segment = dict(scene)
+            segment["durationSec"] = length
+            if part:
+                segment["action"] = str(scene.get("action", "")) + " Continue the same action naturally from the previous segment; do not restart or change the subject."
+            segment["segmentIndex"] = part
+            segments.append(segment)
+            remaining -= length
+            part += 1
+    return segments
+
+
 def scene_prompt(story, scene, index, total):
     cast = "\n".join(
         f"{item.get('name', 'Character')}: {item.get('description', '')}"
@@ -327,6 +348,7 @@ def process_job(event):
     scenes = story.get("scenes") or []
     if not scenes:
         raise ValueError("The video job needs a complete AI Director scene plan.")
+    scenes = expand_scene_segments(scenes)
     if not os.getenv("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY is missing in the RunPod worker environment.")
 
