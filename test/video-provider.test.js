@@ -33,10 +33,12 @@ test("video provider reports missing RunPod configuration without sending a requ
     endpoint: process.env.RUNPOD_ENDPOINT_ID,
     key: process.env.RUNPOD_API_KEY,
     gemini: process.env.GEMINI_API_KEY,
+    ready: process.env.AHM_VIDEO_WORKER_READY,
   };
   delete process.env.RUNPOD_ENDPOINT_ID;
   delete process.env.RUNPOD_API_KEY;
   delete process.env.GEMINI_API_KEY;
+  delete process.env.AHM_VIDEO_WORKER_READY;
   try {
     assert.equal(isVideoProviderConfigured(), false);
     await assert.rejects(
@@ -48,8 +50,12 @@ test("video provider reports missing RunPod configuration without sending a requ
     else process.env.RUNPOD_ENDPOINT_ID = previous.endpoint;
     if (previous.key === undefined) delete process.env.RUNPOD_API_KEY;
     else process.env.RUNPOD_API_KEY = previous.key;
+    if (previous.ready === undefined) delete process.env.AHM_VIDEO_WORKER_READY;
+    else process.env.AHM_VIDEO_WORKER_READY = previous.ready;
     if (previous.gemini === undefined) delete process.env.GEMINI_API_KEY;
     else process.env.GEMINI_API_KEY = previous.gemini;
+    if (previous.ready === undefined) delete process.env.AHM_VIDEO_WORKER_READY;
+    else process.env.AHM_VIDEO_WORKER_READY = previous.ready;
   }
 });
 
@@ -62,6 +68,7 @@ test("video provider submits a complete story to RunPod Serverless", async () =>
   process.env.RUNPOD_ENDPOINT_ID = "endpoint-test";
   process.env.RUNPOD_API_KEY = "runpod-test";
   process.env.GEMINI_API_KEY = "gemini-test";
+  process.env.AHM_VIDEO_WORKER_READY = "true";
   const mock = mockResponse({ id: "worker-job-123", status: "IN_QUEUE" });
   try {
     const story = { title: "Test", narration: "A test.", scenes: [{ action: "A scene" }] };
@@ -81,9 +88,10 @@ test("video provider submits a complete story to RunPod Serverless", async () =>
 });
 
 test("video provider returns the final MP4 URL when the worker completes", async () => {
-  const previous = { endpoint: process.env.RUNPOD_ENDPOINT_ID, key: process.env.RUNPOD_API_KEY };
+  const previous = { endpoint: process.env.RUNPOD_ENDPOINT_ID, key: process.env.RUNPOD_API_KEY, ready: process.env.AHM_VIDEO_WORKER_READY };
   process.env.RUNPOD_ENDPOINT_ID = "endpoint-test";
   process.env.RUNPOD_API_KEY = "runpod-test";
+  process.env.AHM_VIDEO_WORKER_READY = "true";
   const mock = mockResponse({
     status: "COMPLETED",
     output: {
