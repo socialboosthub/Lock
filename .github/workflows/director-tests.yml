@@ -10,6 +10,10 @@ on:
       - main
       - feature/ahm-autonomous-generation-foundation
 
+concurrency:
+  group: ahm-studio-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
