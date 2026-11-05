@@ -1085,7 +1085,11 @@
       const response = await fetch("/api/explainer/video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ story })
+        body: JSON.stringify({
+          story,
+          voice: $("voiceStyle")?.value || "Charon",
+          musicEnabled: $("musicEnabled")?.checked === true
+        })
       });
       const started = await response.json();
       if (!response.ok || !started.ok || !started.jobId) {
