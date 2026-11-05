@@ -4,41 +4,45 @@ const https = require("node:https");
 const { EventEmitter } = require("node:events");
 const { startExplainerGeneration } = require("../lib/providers/llm");
 
-test("explainer uses GenerateContent without the Interactions API revision header", async () => {
+test("explainer falls back when the preferred Gemini model is overloaded", async () => {
   const originalRequest = https.request;
   const originalKey = process.env.GEMINI_API_KEY;
   const originalModel = process.env.GEMINI_MODEL;
-  let requestOptions;
-  let requestBody = "";
+  const originalFallbacks = process.env.GEMINI_FALLBACK_MODELS;
+  const requests = [];
 
   process.env.GEMINI_API_KEY = "test-key";
   process.env.GEMINI_MODEL = "gemini-3.8-flash";
+  process.env.GEMINI_FALLBACK_MODELS = "gemini-3.7-flash,gemini-3.5-flash-lite";
 
   https.request = (options, onResponse) => {
-    requestOptions = options;
+    const entry = { options, body: "" };
+    requests.push(entry);
     const req = new EventEmitter();
-    req.write = chunk => { requestBody += chunk; };
+    req.write = chunk => { entry.body += chunk; };
     req.setTimeout = () => {};
     req.end = () => {
       const res = new EventEmitter();
-      res.statusCode = 200;
+      const attempt = requests.length;
+      res.statusCode = attempt === 1 ? 503 : 200;
       onResponse(res);
       queueMicrotask(() => {
-        res.emit("data", Buffer.from(JSON.stringify({
-          candidates: [{
-            content: { parts: [{ text: JSON.stringify({
-              title: "How Light Travels",
-              topic: "Speed of light",
-              durationSec: 45,
-              narration: "Light travels incredibly fast.",
-              scenes: [
-                { narration: "Light moves through space at an extraordinary speed." },
-                { narration: "That speed is about 300,000 kilometres per second." }
-              ]
-            }) }] },
-            finishReason: "STOP"
-          }]
-        })));
+        const payload = attempt === 1
+          ? { error: { message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } }
+          : { candidates: [{
+              content: { parts: [{ text: JSON.stringify({
+                title: "How Light Travels",
+                topic: "Speed of light",
+                durationSec: 45,
+                narration: "Light travels incredibly fast.",
+                scenes: [
+                  { narration: "Light moves through space at an extraordinary speed." },
+                  { narration: "That speed is about 300,000 kilometres per second." }
+                ]
+              }) }] },
+              finishReason: "STOP"
+            }] };
+        res.emit("data", Buffer.from(JSON.stringify(payload)));
         res.emit("end");
       });
     };
@@ -49,11 +53,12 @@ test("explainer uses GenerateContent without the Interactions API revision heade
     const result = await startExplainerGeneration("Speed of light");
     assert.equal(result.status, "completed");
     assert.equal(result.story.scenes.length, 2);
-    assert.equal(requestOptions.method, "POST");
-    assert.match(requestOptions.path, /:generateContent$/);
-    assert.equal(requestOptions.headers["x-goog-api-key"], "test-key");
-    assert.equal(requestOptions.headers["Api-Revision"], undefined);
-    const sent = JSON.parse(requestBody);
+    assert.equal(requests.length, 2);
+    assert.match(requests[0].options.path, /models\/gemini-3\.8-flash:generateContent$/);
+    assert.match(requests[1].options.path, /models\/gemini-3\.7-flash:generateContent$/);
+    assert.equal(requests[1].options.headers["x-goog-api-key"], "test-key");
+    assert.equal(requests[1].options.headers["Api-Revision"], undefined);
+    const sent = JSON.parse(requests[1].body);
     assert.equal(sent.generationConfig.responseMimeType, "application/json");
     assert.match(sent.contents[0].parts[0].text, /Speed of light/);
   } finally {
@@ -62,5 +67,7 @@ test("explainer uses GenerateContent without the Interactions API revision heade
     else process.env.GEMINI_API_KEY = originalKey;
     if (originalModel === undefined) delete process.env.GEMINI_MODEL;
     else process.env.GEMINI_MODEL = originalModel;
+    if (originalFallbacks === undefined) delete process.env.GEMINI_FALLBACK_MODELS;
+    else process.env.GEMINI_FALLBACK_MODELS = originalFallbacks;
   }
 });
