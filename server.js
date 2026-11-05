@@ -41,7 +41,7 @@ function createRateLimiter(name, maxRequests, windowMs) {
 }
 
 const limitExplainerPlans = createRateLimiter("explainer-plan", 8, 15 * 60 * 1000);
-const limitVideoJobs = createRateLimiter("video-job", 1, 10 * 60 * 1000);
+const limitVideoJobs = createRateLimiter("video-job", 3, 10 * 60 * 1000);
 const limitStoryPlans = createRateLimiter("story-plan", 5, 15 * 60 * 1000);
 
 app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h" }));
