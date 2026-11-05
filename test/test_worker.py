@@ -146,6 +146,7 @@ class AHMWorkerTests(unittest.TestCase):
                 {
                     "start": 0,
                     "end": 6,
+                    "speechDurationSec": 3,
                     "narration": "Light moves fast. It crosses space.",
                     "subtitlePhrases": ["Light moves fast.", "It crosses space."],
                     "dialogue": [{"character": "char_1", "line": "Watch closely!"}],
@@ -160,6 +161,8 @@ class AHMWorkerTests(unittest.TestCase):
         self.assertIn("Light moves fast.", content)
         self.assertIn("It crosses space.", content)
         self.assertIn("Watch closely!", content)
+        self.assertIn("00:00:03,000", content)
+        self.assertNotIn("00:00:06,000", content)
 
 
 if __name__ == "__main__":
