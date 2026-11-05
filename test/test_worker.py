@@ -8,6 +8,7 @@ from worker.handler import (
     make_srt,
     scene_duration,
     scene_prompt,
+    build_tts_request,
     generate_music,
     handler,
 )
@@ -37,6 +38,22 @@ class AHMWorkerTests(unittest.TestCase):
         self.assertIn("Blue coat, silver glasses", prompt)
         self.assertIn("Glowing golden particle", prompt)
         self.assertIn("Do not add", prompt)
+
+    def test_story_dialogue_uses_two_distinct_character_voices(self):
+        story = {
+            "characters": [{"id": "char_1", "name": "Elias", "voice": "Puck"}],
+            "scenes": [{
+                "narration": "The night sky begins to glow.",
+                "dialogue": [{"character": "char_1", "line": "Look at the stars!"}],
+            }],
+        }
+        request = build_tts_request(story, "Charon")
+        self.assertEqual(len(request["speech_config"]["speakers"]), 2)
+        self.assertEqual(request["speech_config"]["speakers"][0], {"speaker": "Narrator", "voice": "Charon"})
+        self.assertEqual(request["speech_config"]["speakers"][1], {"speaker": "Elias", "voice": "Puck"})
+        content = request["input"][0]["content"]
+        self.assertEqual(content[0]["annotations"][0]["speaker"], "Narrator")
+        self.assertEqual(content[1]["annotations"][0]["speaker"], "Elias")
 
     def test_media_blocks_only_reads_model_output(self):
         interaction = {
@@ -78,6 +95,7 @@ class AHMWorkerTests(unittest.TestCase):
                     "end": 6,
                     "narration": "Light moves fast. It crosses space.",
                     "subtitlePhrases": ["Light moves fast.", "It crosses space."],
+                    "dialogue": [{"character": "char_1", "line": "Watch closely!"}],
                 }
             ]
         }
@@ -88,6 +106,7 @@ class AHMWorkerTests(unittest.TestCase):
         self.assertIn("00:00:00,000 -->", content)
         self.assertIn("Light moves fast.", content)
         self.assertIn("It crosses space.", content)
+        self.assertIn("Watch closely!", content)
 
 
 if __name__ == "__main__":
