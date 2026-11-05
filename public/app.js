@@ -1283,7 +1283,114 @@
     }
   });
 
-  function buildCanvasWelcome() {
+  async function loadCharacterLibrary() {
+    const host = $("characterLibraryList");
+    if (!host) return;
+    try {
+      const items = await characterAll();
+      state.savedCharacters = items;
+      if (!items.length) {
+        host.className = "historyEmpty";
+        host.textContent = "No saved characters yet. Add one above or save characters from an AI Director plan.";
+        return;
+      }
+      host.className = "characterLibraryList";
+      host.innerHTML = items.map(item => `
+        <article class="characterItem" data-character-id="${escapeHtml(item.id)}">
+          <div class="characterItemHead">
+            <strong>${escapeHtml(item.name)}</strong>
+            <label><input type="checkbox" data-character-use ${item.useInAI !== false ? "checked" : ""}> Reuse in AI plans</label>
+          </div>
+          <label>Character name<input data-character-name maxlength="80" value="${escapeHtml(item.name)}"></label>
+          <label>Identity and appearance<textarea data-character-description rows="3" maxlength="1600">${escapeHtml(item.description)}</textarea></label>
+          <div class="row wrap">
+            <button class="secondary" data-character-save>Save changes</button>
+            <button class="secondary" data-character-delete>Delete</button>
+          </div>
+        </article>
+      `).join("");
+
+      host.querySelectorAll("[data-character-use]").forEach(input => {
+        input.addEventListener("change", async () => {
+          const card = input.closest("[data-character-id]");
+          const item = state.savedCharacters.find(value => value.id === card?.dataset.characterId);
+          if (!item) return;
+          item.useInAI = input.checked;
+          await characterPut(item);
+        });
+      });
+
+      host.querySelectorAll("[data-character-save]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const card = button.closest("[data-character-id]");
+          const item = state.savedCharacters.find(value => value.id === card?.dataset.characterId);
+          if (!item) return;
+          const name = card.querySelector("[data-character-name]").value.trim();
+          const description = card.querySelector("[data-character-description]").value.trim();
+          if (!name || !description) {
+            alert("Add both a character name and a visual identity.");
+            return;
+          }
+          await characterPut({ ...item, name, description, updatedAt: Date.now() });
+          await loadCharacterLibrary();
+        });
+      });
+
+      host.querySelectorAll("[data-character-delete]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const card = button.closest("[data-character-id]");
+          const id = card?.dataset.characterId;
+          if (!id || !confirm("Delete this saved character?")) return;
+          await characterDelete(id);
+          await loadCharacterLibrary();
+        });
+      });
+    } catch (error) {
+      host.className = "historyEmpty";
+      host.textContent = "Character storage is unavailable in this browser: " + error.message;
+    }
+  }
+
+  $("saveCharacterBtn").addEventListener("click", async () => {
+    const name = $("characterName").value.trim();
+    const description = $("characterDescription").value.trim();
+    if (!name || !description) {
+      alert("Enter a character name and a detailed visual identity first.");
+      return;
+    }
+    const id = "char_" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "_" + Math.random().toString(36).slice(2));
+    await characterPut({ id, name, description, useInAI: true, source: "custom", createdAt: Date.now() });
+    $("characterName").value = "";
+    $("characterDescription").value = "";
+    await loadCharacterLibrary();
+  });
+
+  $("savePlanCharactersBtn").addEventListener("click", async () => {
+    const characters = state.generatedStory?.characters || [];
+    if (!characters.length) return;
+    const saved = await characterAll();
+    let added = 0;
+    for (const character of characters) {
+      const name = String(character.name || "").trim();
+      const description = String(character.description || "").trim();
+      if (!name || !description) continue;
+      const duplicate = saved.some(item =>
+        item.name.toLowerCase() === name.toLowerCase() && item.description === description
+      );
+      if (duplicate) continue;
+      const id = "char_" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "_" + Math.random().toString(36).slice(2));
+      const item = { id, name, description, useInAI: true, source: "AI Director", createdAt: Date.now() };
+      await characterPut(item);
+      saved.push(item);
+      added++;
+    }
+    await loadCharacterLibrary();
+    $("aiStoryStatus").textContent = added
+      ? added + " character(s) saved to your reusable library."
+      : "Those characters are already saved in your library.";
+  });
+
+  function buildCanvasWelcome() {  function buildCanvasWelcome() {
     ctx.fillStyle = "#0e1724";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1318,4 +1425,5 @@
 
   buildCanvasWelcome();
   loadHistory();
+  loadCharacterLibrary();
 })();
