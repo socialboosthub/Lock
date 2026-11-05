@@ -735,6 +735,8 @@
     }
     button.disabled = true;
     state.generatedStory = null;
+    state.videoJobId = null;
+    try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
     $("savePlanCharactersBtn").disabled = true;
     $("renderBtn").disabled = true;
     $("renderBtn").textContent = "Create AI plan first";
