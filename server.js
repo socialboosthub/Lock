@@ -56,8 +56,24 @@ app.post("/api/explainer/video", async (req, res) => {
     if (!story.narration || !story.title) {
       return res.status(400).json({ ok: false, error: "The AI Director plan is missing its title or narration." });
     }
+    const allowedVoices = new Set(["Charon", "Kore", "Puck", "Aoede", "Fenrir", "Zephyr", "Leda", "Orus"]);
+    const voice = typeof req.body?.voice === "string" ? req.body.voice : "Charon";
+    if (!allowedVoices.has(voice)) {
+      return res.status(400).json({ ok: false, error: "Choose a supported AHM narrator voice." });
+    }
+    const musicEnabled = req.body?.musicEnabled === true;
+    if (musicEnabled && process.env.LYRIA_ENABLED !== "true") {
+      return res.status(503).json({
+        ok: false,
+        error: "Original background music is selected, but Lyria is not enabled for this deployment. It is a paid music service and must be explicitly configured first."
+      });
+    }
+    const productionStory = {
+      ...story,
+      productionSettings: { voice, musicEnabled }
+    };
     const jobId = crypto.randomUUID();
-    const job = await startVideoJob({ jobId, story });
+    const job = await startVideoJob({ jobId, story: productionStory });
     return res.status(202).json({ ok: true, jobId: job.id, status: job.status });
   } catch (error) {
     const status = error.code === "VIDEO_PROVIDER_NOT_CONFIGURED" ? 503 : 502;
