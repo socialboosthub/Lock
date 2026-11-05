@@ -1550,7 +1550,7 @@
       const health = await response.json();
       if (!response.ok || !health.ok) throw new Error("Status unavailable");
       const items = [
-        health.storyProvider === "configured" ? "AI Director connected" : "AI Director needs setup",
+        health.storyProvider === "configured" ? "Gemini AI key configured" : "AI Director needs setup",
         health.videoProvider === "configured" ? "Video worker ready" : "Video worker not connected",
         health.voiceProvider === "configured" ? "AI voices ready" : "Voice rendering awaits worker setup",
         health.musicProvider === "enabled" ? "Background score enabled" : "Optional background score off",
