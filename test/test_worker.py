@@ -9,6 +9,7 @@ from worker.handler import (
     scene_duration,
     scene_prompt,
     generate_music,
+    handler,
 )
 
 
@@ -58,6 +59,16 @@ class AHMWorkerTests(unittest.TestCase):
                 __import__("os").environ.pop("LYRIA_ENABLED", None)
             else:
                 __import__("os").environ["LYRIA_ENABLED"] = previous
+
+    def test_worker_raises_failures_so_RunPod_marks_the_job_failed(self):
+        import os
+        previous = os.environ.pop("GEMINI_API_KEY", None)
+        try:
+            with self.assertRaisesRegex(RuntimeError, "GEMINI_API_KEY is missing"):
+                handler({"input": {"story": {"scenes": [{"action": "A scene"}]}}})
+        finally:
+            if previous is not None:
+                os.environ["GEMINI_API_KEY"] = previous
 
     def test_subtitles_use_scene_timing_and_preserve_phrases(self):
         story = {
