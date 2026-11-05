@@ -709,3 +709,49 @@ footer {
   font-size: 11px;
   line-height: 1.45;
 }
+
+
+/* Reusable character library */
+.characterLibraryList {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.characterItem {
+  padding: 13px;
+  border: 1px solid #343b49;
+  border-radius: 12px;
+  background: #101722;
+}
+.characterItemHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.characterItemHead strong {
+  color: var(--gold);
+}
+.characterItemHead label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.characterItemHead input {
+  accent-color: var(--cyan);
+}
+.characterItem > label {
+  display: block;
+  margin: 10px 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.characterItem input[data-character-name],
+.characterItem textarea[data-character-description] {
+  width: 100%;
+  margin-top: 5px;
+}
