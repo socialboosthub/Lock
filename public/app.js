@@ -685,6 +685,9 @@
       return;
     }
     button.disabled = true;
+    state.generatedStory = null;
+    $("renderBtn").disabled = true;
+    $("renderBtn").textContent = "Create AI plan first";
     status.textContent = "Starting AHM Director…";
     try {
       const startResponse = await fetch("/api/explainer/plan", {
