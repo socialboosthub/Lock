@@ -53,7 +53,7 @@ test("complete video API validates missing production configuration", async () =
   try {
     const response = await fetch(baseUrl + "/api/explainer/video", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Forwarded-For": "203.0.113.1" },
       body: JSON.stringify({ story: { title: "Test", narration: "Test", scenes: [{}] } }),
     });
     const body = await response.json();
@@ -98,7 +98,7 @@ test("complete video API submits and polls a RunPod job", async () => {
     };
     const started = await fetch(baseUrl + "/api/explainer/video", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Forwarded-For": "203.0.113.2" },
       body: JSON.stringify({ story, voice: "Charon", musicEnabled: false }),
     });
     const startBody = await started.json();
@@ -145,7 +145,7 @@ test("paid background music cannot be requested while Lyria is disabled", async 
   try {
     const response = await fetch(baseUrl + "/api/explainer/video", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Forwarded-For": "203.0.113.3" },
       body: JSON.stringify({
         story: { title: "Test", narration: "Test.", scenes: [{}] },
         musicEnabled: true,
