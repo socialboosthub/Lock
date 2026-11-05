@@ -24,14 +24,16 @@ test("video generation endpoint rate-limits repeated jobs from one IP", async ()
     },
     body: JSON.stringify({ story: null }),
   });
-  const first = await send();
-  const firstBody = await first.json();
-  assert.equal(first.status, 400);
-  assert.match(firstBody.error, /AI Director plan/);
+  for (let index = 0; index < 3; index++) {
+    const response = await send();
+    const body = await response.json();
+    assert.equal(response.status, 400);
+    assert.match(body.error, /AI Director plan/);
+  }
 
-  const second = await send();
-  const secondBody = await second.json();
-  assert.equal(second.status, 429);
-  assert.match(secondBody.error, /too many requests/);
-  assert.ok(Number(second.headers.get("retry-after")) > 0);
+  const limited = await send();
+  const limitedBody = await limited.json();
+  assert.equal(limited.status, 429);
+  assert.match(limitedBody.error, /too many requests/);
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
 });
