@@ -14,6 +14,8 @@ AHM Studio is a mobile-first, AI-directed short-form explainer and cinematic vid
 
 The application does not claim a storyboard or placeholder render is a finished AI video.
 
+The browser includes a reusable character library with create, edit, delete and include-in-future-plans controls. Character references are stored locally in IndexedDB and passed to the Director as visual-continuity data.
+
 ## Local development
 
 1. Copy `.env.example` to `.env`.
