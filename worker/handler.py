@@ -400,10 +400,9 @@ def upload_to_supabase(file_path, job_id):
         with urllib.request.urlopen(bucket_request, timeout=60) as response:
             response.read()
     except urllib.error.HTTPError as error:
-        if error.code not in (400, 409):
-            detail = error.read().decode("utf-8", errors="replace")
-            if "already exists" not in detail.lower():
-                raise RuntimeError(f"Could not prepare Supabase storage bucket: {detail}") from error
+        detail = error.read().decode("utf-8", errors="replace")
+        if error.code != 409 and "already exists" not in detail.lower():
+            raise RuntimeError(f"Could not prepare Supabase storage bucket: {detail}") from error
 
     headers = {
         "Authorization": f"Bearer {key}",
