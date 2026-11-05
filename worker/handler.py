@@ -263,7 +263,10 @@ def build_tts_request(story, narrator_voice=None):
 
     if len(speaker_order) == 1:
         speaker = speaker_order[0]
-        selected_voice = narrator_voice or TTS_VOICE if speaker == "Narrator" else character_voice(speaker, "Puck")
+        if speaker == "Narrator":
+            selected_voice = narrator_voice or TTS_VOICE
+        else:
+            selected_voice = character_voice(speaker, "Puck")
         script = segments[0]["text"] if len(segments) == 1 else "\n\n".join(item["text"] for item in segments)
         return {
             "input": "Read the following narration/dialogue verbatim. Do not add, omit, paraphrase or repeat words. Use " +
