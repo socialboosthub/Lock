@@ -784,7 +784,7 @@
       if (!videoReady) {
         status.textContent = started.video?.message || "The plan is ready, but the video worker is not connected yet.";
       }
-      $("titleInput").value = story.title || "AHM Explainer";
+      $("titleInput").value = story.title || "AHM Studio video";
       $("scriptInput").value = story.narration || idea;
       state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [], continuityNotes: story.continuityNotes || [], storyArc: story.storyArc || null, titleFit: story.titleFit || null };
       const sceneCount = (story.scenes || []).length;
@@ -808,9 +808,9 @@
       }));
       renderSceneCards();
       drawScene(0, 0);
-      $("previewTitle").textContent = story.title || "Your AHM explainer";
+      $("previewTitle").textContent = story.title || "Your AHM video";
       $("previewCaption").textContent = `${state.scenes.length} AI-directed scenes · ${story.durationSec}s planned`;
-      status.textContent = `Explainer plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Subtitle timing is provisional until narration audio is generated. No video has been created.`;
+      status.textContent = `${story.contentMode === "story" ? "Cinematic story" : "Explainer"} plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Final voice and subtitle timing will be synchronized during production. No video has been created yet.`;
 
       const intro = document.createElement("div");
       intro.className = "aiStorySummary";
