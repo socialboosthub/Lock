@@ -6,8 +6,8 @@ AHM Studio is a mobile-first, AI-directed short-form explainer and cinematic vid
 
 1. Gemini creates a fact-aware explainer plan, narration script, scene timings and continuity bible.
 2. The RunPod Serverless worker generates a vertical 9:16 cinematic clip for every scene with Gemini Omni Flash.
-3. Gemini 3.8 Flash TTS generates the narrator voice.
-4. Each video clip contributes its own environmental sound and sound effects.
+3. Gemini 3.8 Flash TTS generates narration and, when the story includes dialogue, automatically assigned character voices (up to two speakers per TTS pass).
+4. Reference frames from earlier clips anchor recurring character appearances in later scenes. Each video clip contributes its own environmental sound and sound effects.
 5. Optional Lyria 3.5 creates an original instrumental background score.
 6. FFmpeg normalizes and joins the clips, mixes narration / scene audio / music, burns timed subtitles and exports an MP4.
 7. The finished MP4 is uploaded to a private Supabase Storage bucket and returned as a signed download link.
