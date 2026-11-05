@@ -15,21 +15,26 @@
     previewTimer: null,
     currentBlob: null,
     generatedStory: null,
-    videoJobId: null
+    videoJobId: null,
+    savedCharacters: []
   };
 
   const canvas = $("previewCanvas");
   const ctx = canvas.getContext("2d");
   const DB_NAME = "ahm-studio-free-v81";
   const STORE = "videos";
+  const CHARACTER_STORE = "characters";
 
   function openDB() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
+      const req = indexedDB.open(DB_NAME, 2);
 
       req.onupgradeneeded = () => {
         if (!req.result.objectStoreNames.contains(STORE)) {
           req.result.createObjectStore(STORE, { keyPath: "id" });
+        }
+        if (!req.result.objectStoreNames.contains(CHARACTER_STORE)) {
+          req.result.createObjectStore(CHARACTER_STORE, { keyPath: "id" });
         }
       };
 
@@ -73,6 +78,38 @@
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite");
       tx.objectStore(STORE).delete(id);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function characterAll() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(CHARACTER_STORE, "readonly")
+        .objectStore(CHARACTER_STORE).getAll();
+      req.onsuccess = () => resolve((req.result || []).sort(
+        (a, b) => String(a.name).localeCompare(String(b.name))
+      ));
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function characterPut(item) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CHARACTER_STORE, "readwrite");
+      tx.objectStore(CHARACTER_STORE).put(item);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function characterDelete(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CHARACTER_STORE, "readwrite");
+      tx.objectStore(CHARACTER_STORE).delete(id);
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
     });
