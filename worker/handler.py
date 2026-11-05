@@ -381,7 +381,7 @@ def write_tts_wav(story, destination, voice=None):
         voice_parts.append(fitted)
 
     concat_file = work / "voice_parts.txt"
-    concat_file.write_text("".join(f"file '{path.as_posix()}'\\n" for path in voice_parts), encoding="utf-8")
+    concat_file.write_text("".join(f"file '{path.as_posix()}'\n" for path in voice_parts), encoding="utf-8")
     run_ffmpeg([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
         "-c", "copy", str(destination),
