@@ -29,8 +29,13 @@ app.post("/api/explainer/plan", async (req, res) => {
     if (topic.length > 6000) {
       return res.status(400).json({ error: "Please keep your topic under 6,000 characters." });
     }
-    const job = await startExplainerGeneration(topic, targetDuration);
-    return res.status(202).json({ ok: true, jobId: job.id, status: job.status });
+    const result = await startExplainerGeneration(topic, targetDuration);
+    return res.status(200).json({
+      ok: true,
+      status: "completed",
+      story: result.story,
+      video: { status: "not_started", message: "The explainer plan is ready. Genuine AI video generation is not connected yet." }
+    });
   } catch (error) {
     const status = error.code === "STORY_PROVIDER_NOT_CONFIGURED" ? 503 : 502;
     console.error("AHM explainer job start failed:", error.message);
