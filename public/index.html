@@ -59,7 +59,7 @@
         <span class="uploadIcon">🎙️</span>
         <span>
           <strong>Optional: use your own narration</strong>
-          <small>Add your own narration to include it in this free sample export. Automatic AI voice is a later upgrade.</small>
+          <small>Add your own recording to replace the free AI-generated narrator.</small>
           <em id="voiceName">No narration uploaded</em>
         </span>
       </label>
@@ -69,15 +69,15 @@
         <span class="uploadIcon">🎵</span>
         <span>
           <strong>Optional: add your own music</strong>
-          <small>Add your own background music to include it in this free sample export. No paid music service is required.</small>
+          <small>Add your own track, or AHM will create an original ambient soundtrack with action sound effects.</small>
           <em id="musicName">No music uploaded</em>
         </span>
       </label>
       <input class="hiddenInput" id="musicFile" type="file" accept="audio/*">
 
       <div class="audioProductionSettings">
-        <p class="smallNote">Free sample mode currently exports uploaded narration. Automatic AI voice generation will be added through a free provider when a reliable no-cost option is verified.</p>
-        <label for="voiceStyle">AI narrator voice (paid cloud mode, kept for later)</label>
+        <p class="smallNote">Free mode generates a spoken AI voice-over using the Gemini Flash-Lite TTS free tier (subject to its quota). Your audio is mixed with the animated scenes and soundtrack.</p>
+        <label for="voiceStyle">AI narrator voice</label>
         <select id="voiceStyle">
           <option value="Charon" selected>Charon · Clear documentary voice</option>
           <option value="Kore">Kore · Firm and expressive</option>
@@ -91,7 +91,7 @@
 
         <label class="musicToggle" for="musicEnabled">
           <input id="musicEnabled" type="checkbox">
-          <span><strong>Generate an original background score</strong><small>Optional paid Lyria music generation. Scene ambience and sound effects are generated separately.</small></span>
+          <span><strong>Generate an original background score</strong><small>Paid Lyria score is reserved for the later cinematic upgrade. Free mode creates a procedural score and action sound effects automatically.</small></span>
         </label>
       </div>
     </section>
@@ -160,7 +160,7 @@
         <span class="step">04</span>
         <div>
           <h2>Render your video</h2>
-          <p>The production worker generates each cinematic clip, creates narration, mixes scene sound and optional original music, burns in timed subtitles and exports the final MP4.</p>
+          <p>Free mode animates the Director's story actions with moving characters, adds AI narration, an original soundtrack, action sound effects and subtitles. The later paid worker remains available for generated 3D cinematic footage and MP4 assembly.</p>
         </div>
       </div>
 
@@ -202,15 +202,15 @@
       </div>
 
       <div class="row wrap renderButtons">
-        <button id="previewBtn" class="secondary">Preview motion</button>
-        <button id="renderBtn" class="primary" disabled>Create AI plan first</button>
+        <button id="previewBtn" class="secondary">Preview full animation</button>
+        <button id="renderBtn" class="primary" disabled>Create AI Director plan first</button>
         <button id="cancelBtn" class="secondary" disabled>Cancel</button>
       </div>
 
       <div id="downloadArea" class="downloadArea hidden"></div>
 
       <p class="smallNote">
-        Your browser exports MP4 if its recorder supports it. Otherwise, it exports WebM. Rendering is limited by your phone's memory and browser capabilities.
+        AHM verifies the exported file duration before offering a download. Some Android browsers export WebM rather than MP4.
       </p>
     </section>
 
@@ -237,5 +237,6 @@
   </main>
 
   <script src="/app.js"></script>
+  <script src="/story-animation.js"></script>
 </body>
         </html>
