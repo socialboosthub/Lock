@@ -194,7 +194,7 @@
     try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
     $("savePlanCharactersBtn").disabled = true;
     $("renderBtn").disabled = false;
-    $("renderBtn").textContent = "Render local image preview";
+    $("renderBtn").textContent = "Render free sample video";
     const script = $("scriptInput").value.trim();
     if (!script) {
       alert("Bro, paste your story or narration first.");
@@ -462,38 +462,79 @@
         imageHeight
       );
     } else {
-      ctx.fillStyle = "#0c1724";
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.fillStyle = "#b68c5c";
-      ctx.globalAlpha = 0.35;
-      ctx.beginPath();
-      ctx.arc(width * 0.74, height * 0.28, width * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-
-      ctx.fillStyle = "#172638";
-      ctx.beginPath();
-      ctx.moveTo(0, height * 0.61);
-      ctx.lineTo(width * 0.3, height * 0.42);
-      ctx.lineTo(width * 0.6, height * 0.65);
-      ctx.lineTo(width, height * 0.47);
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
-      ctx.fill();
-
-      ctx.fillStyle = "#d9b078";
-      ctx.beginPath();
-      ctx.arc(width * 0.5, height * 0.42, width * 0.11, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#263b50";
-      ctx.fillRect(width * 0.36, height * 0.53, width * 0.28, height * 0.24);
-
-      ctx.font = "bold 18px system-ui";
-      ctx.fillStyle = "#fff";
-      ctx.textAlign = "center";
-      ctx.fillText("ADD AI IMAGE", width / 2, height * 0.82);
+      // Procedural, story-aware 2D/3D-inspired scene art for the free on-device renderer.
+      // It uses each Director scene's own action, environment and mood instead of a generic placeholder.
+      const prompt = String(scene.visualPrompt || scene.action || scene.caption || "").toLowerCase();
+      const action = String(scene.action || scene.caption || "").toLowerCase();
+      const palette = /ocean|sea|fish|water|river|lake|storm/.test(prompt)
+        ? ["#071b35","#126078","#d7a85b"] :
+        /forest|tree|woods|jungle/.test(prompt) ? ["#071f1c","#17634c","#c4a66a"] :
+        /space|planet|star|universe|moon/.test(prompt) ? ["#090d28","#332b66","#e9b96e"] :
+        /fire|danger|attack|battle|blood|volcano/.test(prompt) ? ["#250d19","#8b302b","#f0a45d"] :
+        /home|house|family|room|village/.test(prompt) ? ["#17223b","#8b5942","#f0c17a"] :
+        ["#101b35","#45527b","#e9b96e"];
+      const [dark, mid, glow] = palette;
+      const t = Number(progress) || 0;
+      const seed = (Number(scene.id) || 1) * 37;
+      const sky = ctx.createLinearGradient(0,0,width,height);
+      sky.addColorStop(0,dark); sky.addColorStop(0.62,mid); sky.addColorStop(1,"#080d18");
+      ctx.fillStyle=sky; ctx.fillRect(0,0,width,height);
+      // Cinematic light source and drifting atmosphere.
+      ctx.save();
+      ctx.globalAlpha=.72;
+      const orbX=width*(.72 + Math.sin(t*Math.PI*2+seed)*.035);
+      const orbY=height*(.27 + Math.cos(t*Math.PI*2+seed)*.018);
+      const halo=ctx.createRadialGradient(orbX,orbY,4,orbX,orbY,width*.43);
+      halo.addColorStop(0,glow); halo.addColorStop(.18,mid); halo.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=halo; ctx.fillRect(0,0,width,height);
+      ctx.restore();
+      // Layered landscape silhouettes create parallax-like depth.
+      for(let layer=0;layer<3;layer++){
+        const base=height*(.53+layer*.105);
+        ctx.beginPath(); ctx.moveTo(0,height);
+        for(let x=0;x<=width+20;x+=20){
+          const y=base+Math.sin((x+seed*9+layer*70)/75)*height*(.025+layer*.009);
+          ctx.lineTo(x,y);
+        }
+        ctx.lineTo(width,height); ctx.closePath();
+        ctx.fillStyle=layer===0?"rgba(7,13,25,.25)":layer===1?"rgba(5,12,23,.55)":"rgba(3,8,17,.88)";
+        ctx.fill();
+      }
+      // Stylized character silhouette, with action-specific posture.
+      const cx=width*(.43+Math.sin(t*Math.PI*2)*.025), cy=height*.57;
+      const scale=1+Math.sin(t*Math.PI*2)*.025;
+      ctx.save(); ctx.translate(cx,cy); ctx.scale(scale,scale);
+      ctx.fillStyle="rgba(5,9,18,.92)";
+      ctx.beginPath(); ctx.ellipse(0,42,width*.18,height*.17,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0,-height*.075,width*.075,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,.18)";
+      ctx.beginPath(); ctx.arc(-width*.022,-height*.09,width*.012,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      // Scene-specific visual motif.
+      if(/fish|gold|treasure|magic|glow/.test(prompt)){
+        ctx.save(); ctx.translate(width*.68,height*.53+Math.sin(t*6)*12);
+        ctx.fillStyle=glow; ctx.shadowColor=glow; ctx.shadowBlur=28;
+        ctx.beginPath(); ctx.ellipse(0,0,width*.105,height*.052,-.12,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-width*.09,0); ctx.lineTo(-width*.17,-height*.055); ctx.lineTo(-width*.16,height*.055); ctx.closePath(); ctx.fill();
+        ctx.fillStyle="#10131c"; ctx.beginPath(); ctx.arc(width*.055,-4,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+      } else if(/car|vehicle|drive|road/.test(action)){
+        ctx.fillStyle="#101722"; ctx.fillRect(width*.08,height*.68,width*.84,height*.08);
+        ctx.fillStyle=glow; ctx.fillRect(width*.2,height*.7,width*.16,5); ctx.fillRect(width*.65,height*.7,width*.16,5);
+      } else {
+        // Floating particles / embers.
+        for(let p=0;p<18;p++){
+          const px=((p*71+seed*13+t*width*.12)%(width+1));
+          const py=(p*97+seed*19)%(height*.72);
+          ctx.globalAlpha=.18+((p%4)*.1); ctx.fillStyle=glow;
+          ctx.beginPath(); ctx.arc(px,py,1.5+(p%3),0,Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha=1;
+      }
+      // Scene heading gives every shot a clear editorial beat.
+      const heading=String(scene.environment||scene.emotion||"THE STORY").replace(/[_-]/g," ").slice(0,34).toUpperCase();
+      ctx.fillStyle="rgba(255,255,255,.72)"; ctx.font="700 11px system-ui"; ctx.textAlign="left";
+      ctx.fillText(heading,24,height*.13);
+      ctx.fillStyle="rgba(255,255,255,.12)"; ctx.fillRect(24,height*.16,width*.22,3);
     }
 
     const shade = ctx.createLinearGradient(0, height * 0.55, 0, height);
@@ -795,14 +836,10 @@
       state.generatedStory = story;
       state.videoJobId = null;
       $("savePlanCharactersBtn").disabled = !(story.characters || []).length;
-      const videoReady = started.video?.status === "ready";
-      $("renderBtn").disabled = !videoReady;
-      $("renderBtn").textContent = videoReady
-        ? "Generate complete cinematic video"
-        : "Video worker setup required";
-      if (!videoReady) {
-        status.textContent = started.video?.message || "The plan is ready, but the video worker is not connected yet.";
-      }
+      // Free-first local renderer is available even when no paid cloud worker is configured.
+      $("renderBtn").disabled = false;
+      $("renderBtn").textContent = "Render free sample video";
+      status.textContent = "Director plan ready. Render a free animated sample on this device; no paid video service is used.";
       $("titleInput").value = story.title || "AHM Studio video";
       $("scriptInput").value = story.narration || idea;
       state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [], continuityNotes: story.continuityNotes || [], storyArc: story.storyArc || null, titleFit: story.titleFit || null };
@@ -873,11 +910,6 @@
 
     if (!window.MediaRecorder || !canvas.captureStream) {
       alert("Your browser cannot record canvas video. Try an updated Chrome browser.");
-      return;
-    }
-
-    if (!state.scenes.every(scene => scene.image)) {
-      alert("The local image-preview renderer needs an image for every scene. For automatic cinematic footage, create an AI Director plan and use Generate complete cinematic video.");
       return;
     }
 
@@ -1270,8 +1302,8 @@
   }
 
   $("renderBtn").addEventListener("click", () => {
-    if (state.generatedStory) generateFullVideo();
-    else renderVideo();
+    // Free-first sample path. Paid cloud video generation remains separate and untouched.
+    renderVideo();
   });
 
   function readGeneratedVideoHistory() {
