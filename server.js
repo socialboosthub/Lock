@@ -5,6 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { startStoryGeneration, getStoryGeneration, startExplainerGeneration, getExplainerGeneration, isStoryProviderConfigured } = require("./lib/providers/llm");
 const { startVideoJob, getVideoJob, isVideoProviderConfigured } = require("./lib/providers/video");
+const { generateFreeVoiceover } = require("./lib/providers/voice");
 
 const app = express();
 const rateLimitBuckets = new Map();
@@ -43,6 +44,7 @@ function createRateLimiter(name, maxRequests, windowMs) {
 const limitExplainerPlans = createRateLimiter("explainer-plan", 8, 15 * 60 * 1000);
 const limitVideoJobs = createRateLimiter("video-job", 3, 10 * 60 * 1000);
 const limitStoryPlans = createRateLimiter("story-plan", 5, 15 * 60 * 1000);
+const limitVoiceover = createRateLimiter("free-voiceover", 5, 10 * 60 * 1000);
 
 app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h" }));
 
@@ -53,9 +55,26 @@ app.get("/api/health", (_req, res) => {
     version: "9.0.0",
     storyProvider: isStoryProviderConfigured() ? "configured" : "not_configured",
     videoProvider: isVideoProviderConfigured() ? "configured" : "not_configured",
-    voiceProvider: isVideoProviderConfigured() ? "configured" : "worker_not_configured",
+    voiceProvider: isStoryProviderConfigured() ? "configured" : "not_configured",
     musicProvider: process.env.LYRIA_ENABLED === "true" && isVideoProviderConfigured() ? "enabled" : "optional_not_enabled"
   });
+});
+
+
+app.post("/api/free-voiceover", limitVoiceover, async (req, res) => {
+  try {
+    const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+    const voice = typeof req.body?.voice === "string" ? req.body.voice : "Kore";
+    const style = typeof req.body?.style === "string" ? req.body.style : "";
+    if (!text) return res.status(400).json({ ok: false, error: "Add narration before generating a voice-over." });
+    if (text.length > 9000) return res.status(400).json({ ok: false, error: "Keep narration under 9,000 characters for this free voice request." });
+    const audio = await generateFreeVoiceover({ text, voice, style });
+    return res.json({ ok: true, ...audio });
+  } catch (error) {
+    const status = error.code === "VOICE_PROVIDER_NOT_CONFIGURED" ? 503 : (error.statusCode || 502);
+    console.error("AHM free voice-over failed:", error.message);
+    return res.status(status).json({ ok: false, error: error.message || "Could not generate the AI voice-over." });
+  }
 });
 
 app.post("/api/explainer/plan", limitExplainerPlans, async (req, res) => {
