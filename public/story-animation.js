@@ -221,6 +221,24 @@
     return new Blob([bytes],{type:data.mimeType||"audio/wav"});
   }
 
+  function actionFoley(audio,destination,action){
+    const a=words(action),now=audio.currentTime;
+    const tone=(frequency,shape,volume,length,slide=0)=>{
+      const osc=audio.createOscillator(),gain=audio.createGain();
+      osc.type=shape;osc.frequency.setValueAtTime(frequency,now);
+      if(slide)osc.frequency.exponentialRampToValueAtTime(Math.max(25,frequency+slide),now+length);
+      gain.gain.setValueAtTime(volume,now);gain.gain.exponentialRampToValueAtTime(.001,now+length);
+      osc.connect(gain);gain.connect(destination);gain.connect(audio.destination);
+      osc.start(now);osc.stop(now+length+.02);
+    };
+    if(/hit|punch|kick|slam|crash|explode|fall|impact|attack/.test(a)){tone(95,'sine',.35,.32,-55);tone(42,'triangle',.22,.22,-18);}
+    else if(/run|walk|step|chase|escape|rush/.test(a)){tone(125,'triangle',.09,.11,-35);}
+    else if(/water|swim|fish|river|lake|sea|ocean/.test(a)){tone(620,'sine',.055,.35,380);}
+    else if(/magic|glow|reveal|discover|gold|treasure/.test(a)){tone(880,'sine',.08,.6,720);tone(1320,'sine',.035,.45,420);}
+    else if(/door|knock|open|close/.test(a)){tone(150,'triangle',.15,.2,-75);}
+    else if(/cry|sad|grief|whisper/.test(a)){tone(220,'sine',.035,.45,-35);}
+  }
+
   function addSoundscape(audio,destination,duration){
     const master=audio.createGain();master.gain.value=.11;master.connect(destination);master.connect(audio.destination);
     const bass=audio.createOscillator(),bassGain=audio.createGain();bass.type="sine";bass.frequency.value=55;bassGain.gain.value=.45;bass.connect(bassGain);bassGain.connect(master);bass.start();
@@ -273,7 +291,7 @@
       recorder=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:4500000,audioBitsPerSecond:160000}:undefined);
       const chunks=[];recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data);};
       const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=e=>reject(e.error||new Error("Recording failed."));});
-      const totalMs=Math.ceil(finalDuration*1000),start=performance.now();let frame=0;
+      const totalMs=Math.ceil(finalDuration*1000),start=performance.now();let frameTimer=null;
       recorder.start(1000);
       voiceSource.start();
       $("previewCaption").textContent="Rendering "+scenes.length+" animated scenes with narration and soundtrack…";
@@ -283,13 +301,13 @@
         const index=Math.min(scenes.length-1,Math.floor(elapsed/sceneMs));
         const progress=(elapsed-index*sceneMs)/sceneMs;
         drawFrame(scenes,index,progress,elapsed,finalDuration);
-        if(index!==lastScene){lastScene=index;$("previewCaption").textContent="Rendering scene "+(index+1)+" / "+scenes.length;}
+        if(index!==lastScene){lastScene=index;$("previewCaption").textContent="Rendering scene "+(index+1)+" / "+scenes.length;actionFoley(audio,destination,scenes[index].action);}
         updateStatus(Math.min(.98,elapsed/totalMs),"RENDERING ANIMATED STORY + AUDIO");
-        frame=requestAnimationFrame(render);
       };
       render();
+      frameTimer=setInterval(render,33);
       await new Promise(resolve=>setTimeout(resolve,totalMs));
-      cancelAnimationFrame(frame);
+      if(frameTimer)clearInterval(frameTimer);
       drawFrame(scenes,scenes.length-1,1,totalMs,finalDuration);
       await new Promise(resolve=>setTimeout(resolve,250));
       if(recorder.state!=="inactive")recorder.stop();
