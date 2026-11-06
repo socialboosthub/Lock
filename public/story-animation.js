@@ -40,12 +40,38 @@
     return clamp(scenes.length * 5,30,120);
   }
 
-  function phraseFor(text, progress) {
-    const all = String(text || "").trim().split(/\s+/).filter(Boolean);
-    if (!all.length) return "";
-    const chunks = [];
-    for (let i=0;i<all.length;i+=5) chunks.push(all.slice(i,i+5).join(" "));
-    return chunks[Math.min(chunks.length-1,Math.floor(clamp(progress,0,.999)*chunks.length))];
+  function buildSubtitleTimeline(text,duration){
+    const tokens=String(text||"").trim().match(/[^\\s]+/g)||[];
+    if(!tokens.length)return [];
+    const chunks=[];let current=[];
+    for(const token of tokens){
+      current.push(token);
+      const punctuation=/[.!?]["')\\]]?$/.test(token);
+      if(current.length>=5&&(punctuation||current.length>=7)){
+        chunks.push(current);current=[];
+      }
+    }
+    if(current.length)chunks.push(current);
+    const weights=chunks.map(chunk=>{
+      const joined=chunk.join(" ");
+      const pause=/[.!?]["')\\]]?$/.test(chunk[chunk.length-1])?0.34:/[,;:]["')\\]]?$/.test(chunk[chunk.length-1])?0.16:0;
+      return chunk.reduce((sum,word)=>sum+Math.max(1,word.replace(/[^a-z]/gi,"").length*.16),0)+pause;
+    });
+    const total=weights.reduce((a,b)=>a+b,0)||1;
+    let cursor=0;
+    return chunks.map((chunk,i)=>{
+      const start=cursor;
+      cursor+=duration*weights[i]/total;
+      return {start,end:cursor,text:chunk.join(" ")};
+    });
+  }
+
+  function subtitleAt(timeline,elapsed){
+    if(!timeline.length)return "";
+    const t=elapsed/1000;
+    let lo=0,hi=timeline.length-1;
+    while(lo<hi){const mid=(lo+hi)>>1;if(timeline[mid].end<t)lo=mid+1;else hi=mid;}
+    return timeline[lo].text;
   }
 
   function drawBackground(scene, t, w, h) {
@@ -168,7 +194,7 @@
     }
   }
 
-  function drawFrame(scenes,index,progress,elapsed,total){
+  function drawFrame(scenes,index,progress,elapsed,total,subtitleTimeline){
     const scene=scenes[index];if(!scene)return;
     const w=canvas.width,h=canvas.height,t=elapsed/1000;
     drawBackground(scene,t,w,h);
@@ -192,7 +218,7 @@
     ctx.fillStyle="rgba(0,0,0,.3)";ctx.fillRect(0,0,w,62);
     ctx.fillStyle="#f4c46e";ctx.font="bold 13px system-ui";ctx.textAlign="left";ctx.fillText("AHM STUDIO",20,25);
     ctx.fillStyle="#fff";ctx.font="600 11px system-ui";ctx.fillText(title.slice(0,42),20,45);
-    const subtitle=phraseFor(scene.caption,progress);
+    const subtitle=subtitleAt(subtitleTimeline,elapsed);
     ctx.font="900 25px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";
     const lines=[];let line="";
     for(const word of subtitle.split(/\s+/)){const next=line?line+" "+word:word;if(ctx.measureText(next).width>w-38&&line){lines.push(line);line=word;}else line=next;}if(line)lines.push(line);
@@ -225,7 +251,7 @@
       const voiceBlob=voiceFile||await makeVoiceover(narration,$("voiceStyle")?.value||"Kore");
       const audioBuffer=await audio.decodeAudioData(await voiceBlob.arrayBuffer());
       if(audioBuffer.duration>120)throw new Error("The generated narration is longer than AHM's two-minute limit.");
-      const duration=Math.max(30,audioBuffer.duration);
+      const duration=Math.max(30,audioBuffer.duration);\n      const subtitleTimeline=buildSubtitleTimeline(narration,audioBuffer.duration);
       const voiceGain=audio.createGain();voiceGain.gain.value=1;voiceGain.connect(audio.destination);
       const voiceSource=audio.createBufferSource();voiceSource.buffer=audioBuffer;voiceSource.connect(voiceGain);
       previewAudio=audio;previewVoiceSource=voiceSource;
@@ -245,7 +271,7 @@
         const sceneMs=totalMs/scenes.length;
         const index=Math.min(scenes.length-1,Math.floor(elapsed/sceneMs));
         const progress=clamp((elapsed-index*sceneMs)/sceneMs,0,1);
-        drawFrame(scenes,index,progress,elapsed,duration);
+        drawFrame(scenes,index,progress,elapsed,duration,subtitleTimeline);
         if(index!==lastScene){lastScene=index;$("previewCaption").textContent="Scene "+(index+1)+" / "+scenes.length+" · narration + soundtrack";actionFoley(audio,audio.destination,scenes[index].action);}
       },33);
       previewTimeout=setTimeout(()=>{stopPreview();$("previewBtn").disabled=false;$("previewBtn").textContent="Preview full animation";},totalMs);
