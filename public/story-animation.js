@@ -284,7 +284,7 @@
   }
 
   function addSoundscape(audio,destination,duration){
-    const master=audio.createGain();master.gain.value=.11;master.connect(destination);master.connect(audio.destination);
+    const master=audio.createGain();master.gain.value=.11;master.connect(destination);if(destination!==audio.destination)master.connect(audio.destination);
     const bass=audio.createOscillator(),bassGain=audio.createGain();bass.type="sine";bass.frequency.value=55;bassGain.gain.value=.45;bass.connect(bassGain);bassGain.connect(master);bass.start();
     const pad=audio.createOscillator(),padGain=audio.createGain();pad.type="triangle";pad.frequency.value=110;padGain.gain.value=.12;pad.connect(padGain);padGain.connect(master);pad.start();
     const shimmer=audio.createOscillator(),shimmerGain=audio.createGain();shimmer.type="sine";shimmer.frequency.value=440;shimmerGain.gain.value=.018;shimmer.connect(shimmerGain);shimmerGain.connect(master);shimmer.start();
