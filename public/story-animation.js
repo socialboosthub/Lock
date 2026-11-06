@@ -10,6 +10,9 @@
   let previewStart = 0;
   let previewScenes = [];
   let lastScene = -1;
+  let previewAudio = null;
+  let previewVoiceSource = null;
+  let previewStopMusic = null;
 
   const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
   const words = value => String(value || "").toLowerCase();
@@ -200,20 +203,57 @@
   }
 
   function updateStatus(p,label){$("progressBar").style.width=Math.round(p*100)+"%";$("progressText").textContent=Math.round(p*100)+"%";$("renderStatus").textContent=label;}
-  function stopPreview(){if(previewTimer){clearInterval(previewTimer);previewTimer=null;}if(previewTimeout){clearTimeout(previewTimeout);previewTimeout=null;}}
+  function stopPreview(){
+    if(previewTimer){clearInterval(previewTimer);previewTimer=null;}
+    if(previewTimeout){clearTimeout(previewTimeout);previewTimeout=null;}
+    if(previewStopMusic){previewStopMusic();previewStopMusic=null;}
+    if(previewVoiceSource){try{previewVoiceSource.stop();}catch{}previewVoiceSource=null;}
+    if(previewAudio&&previewAudio.state!=="closed"){previewAudio.close().catch(()=>{});previewAudio=null;}
+  }
 
-  function startPreview(){
+  async function startPreview(){
     const scenes=getScenes();if(!scenes.length){alert("Create the AI Director plan first.");return;}
-    stopPreview();previewScenes=scenes;const duration=getDuration(scenes);previewStart=performance.now();
-    $("previewBtn").textContent="Previewing animation…";
-    previewTimer=setInterval(()=>{
-      const elapsed=(performance.now()-previewStart)%(duration*1000);
-      const index=Math.min(scenes.length-1,Math.floor(elapsed/(duration*1000/scenes.length)));
-      const progress=(elapsed/(duration*1000/scenes.length))-index;
-      drawFrame(scenes,index,progress,elapsed,duration);
-      if(index!==lastScene){lastScene=index;$("previewCaption").textContent="Animated action · Scene "+(index+1)+" of "+scenes.length;}
-    },33);
-    previewTimeout=setTimeout(()=>{stopPreview();$("previewBtn").textContent="Preview full animation";},duration*1000);
+    stopPreview();previewScenes=scenes;
+    const narration=$("scriptInput")?.value?.trim()||scenes.map(s=>s.caption).join(" ");
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass){alert("This browser does not support audio preview.");return;}
+    let audio=null;
+    $("previewBtn").disabled=true;$("previewBtn").textContent="Creating AI voice-over…";
+    try{
+      audio=new AudioContextClass();await audio.resume();
+      const voiceFile=$("voiceFile")?.files?.[0];
+      const voiceBlob=voiceFile||await makeVoiceover(narration,$("voiceStyle")?.value||"Kore");
+      const audioBuffer=await audio.decodeAudioData(await voiceBlob.arrayBuffer());
+      if(audioBuffer.duration>120)throw new Error("The generated narration is longer than AHM's two-minute limit.");
+      const duration=Math.max(30,audioBuffer.duration);
+      const voiceGain=audio.createGain();voiceGain.gain.value=1;voiceGain.connect(audio.destination);
+      const voiceSource=audio.createBufferSource();voiceSource.buffer=audioBuffer;voiceSource.connect(voiceGain);
+      previewAudio=audio;previewVoiceSource=voiceSource;
+      const musicFile=$("musicFile")?.files?.[0];
+      if(musicFile){
+        const musicBuffer=await audio.decodeAudioData(await musicFile.arrayBuffer());
+        const musicSource=audio.createBufferSource(),musicGain=audio.createGain();
+        musicSource.buffer=musicBuffer;musicSource.loop=true;musicGain.gain.value=Number($("musicVolume")?.value||12)/100;
+        musicSource.connect(musicGain);musicGain.connect(audio.destination);musicSource.start();
+        previewStopMusic=()=>{try{musicSource.stop();}catch{}};
+      }else previewStopMusic=addSoundscape(audio,audio.destination,duration);
+      $("previewBtn").textContent="Previewing animation + voice + music…";
+      voiceSource.start();previewStart=performance.now();lastScene=-1;
+      const totalMs=duration*1000;
+      previewTimer=setInterval(()=>{
+        const elapsed=Math.min(totalMs,performance.now()-previewStart);
+        const sceneMs=totalMs/scenes.length;
+        const index=Math.min(scenes.length-1,Math.floor(elapsed/sceneMs));
+        const progress=clamp((elapsed-index*sceneMs)/sceneMs,0,1);
+        drawFrame(scenes,index,progress,elapsed,duration);
+        if(index!==lastScene){lastScene=index;$("previewCaption").textContent="Scene "+(index+1)+" / "+scenes.length+" · narration + soundtrack";actionFoley(audio,audio.destination,scenes[index].action);}
+      },33);
+      previewTimeout=setTimeout(()=>{stopPreview();$("previewBtn").disabled=false;$("previewBtn").textContent="Preview full animation";},totalMs);
+    }catch(error){
+      stopPreview();if(audio&&audio.state!=="closed")await audio.close().catch(()=>{});
+      $("previewBtn").disabled=false;$("previewBtn").textContent="Preview full animation";
+      alert("AHM could not prepare the full preview: "+(error.message||error));
+    }
   }
 
   async function makeVoiceover(text,voice){
