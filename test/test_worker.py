@@ -52,7 +52,51 @@ class AHMWorkerTests(unittest.TestCase):
         }
         request = build_tts_request(story, "Charon")
         self.assertEqual(request["speech_config"], [{"voice": "Fenrir"}])
-        self.assertIn("I will find the answer.", request["input"])
+        spoken = request["input"][0]["content"][0]["text"]
+        self.assertEqual(spoken, "I will find the answer.")
+        self.assertNotIn("Read the following", spoken)
+        self.assertEqual(request["input"][0]["content"][0]["annotations"][0]["style"], "natural, expressive character dialogue")
+
+    def test_long_scene_segments_keep_unique_narration_dialogue_and_timing(self):
+        scene = {
+            "start": 5,
+            "end": 18,
+            "durationSec": 13,
+            "narration": "First discovery sentence. Second discovery sentence. Third discovery sentence.",
+            "dialogue": [
+                {"character": "a", "line": "Look at the first result!"},
+                {"character": "b", "line": "Now check the second result!"},
+                {"character": "a", "line": "We finally understand it."},
+            ],
+        }
+        result = expand_scene_segments([scene])
+        self.assertEqual([item["durationSec"] for item in result], [10, 3])
+        self.assertEqual([item["start"] for item in result], [5, 15])
+        self.assertEqual([item["end"] for item in result], [15, 18])
+        combined_narration = " ".join(item["narration"] for item in result)
+        self.assertEqual(combined_narration, scene["narration"])
+        combined_dialogue = [line for item in result for line in item["dialogue"]]
+        self.assertEqual(combined_dialogue, scene["dialogue"])
+
+    def test_three_or_more_speakers_are_rendered_as_individual_voice_turns(self):
+        story = {
+            "characters": [
+                {"id": "one", "name": "Elias", "voice": "Puck"},
+                {"id": "two", "name": "Mara", "voice": "Kore"},
+            ],
+            "scenes": [{
+                "narration": "The story begins.",
+                "dialogue": [
+                    {"character": "one", "line": "I found it."},
+                    {"character": "two", "line": "Show me."},
+                ],
+            }],
+        }
+        request = build_tts_request(story, "Charon")
+        self.assertEqual(len(request["segments"]), 3)
+        self.assertEqual(request["segments"][0]["speech_config"], [{"voice": "Charon"}])
+        self.assertEqual(request["segments"][1]["speech_config"], [{"voice": "Puck"}])
+        self.assertEqual(request["segments"][2]["speech_config"], [{"voice": "Kore"}])
 
     def test_video_input_attaches_character_reference_images(self):
         import base64
@@ -76,7 +120,7 @@ class AHMWorkerTests(unittest.TestCase):
             }],
         }
         request = build_tts_request(story, "Charon")
-        self.assertEqual(request["speech_config"]["mode"], "conversational")
+        self.assertNotIn("mode", request["speech_config"])
         self.assertEqual(len(request["speech_config"]["speakers"]), 2)
         self.assertEqual(request["speech_config"]["speakers"][0], {"speaker": "Narrator", "voice": "Charon"})
         self.assertEqual(request["speech_config"]["speakers"][1], {"speaker": "Elias", "voice": "Puck"})

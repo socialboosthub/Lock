@@ -1180,7 +1180,8 @@
           body: JSON.stringify({
             story,
             voice: $("voiceStyle")?.value || "Charon",
-            musicEnabled: $("musicEnabled")?.checked === true
+            musicEnabled: $("musicEnabled")?.checked === true,
+            musicVolume: Number($("musicVolume")?.value ?? 12)
           })
         });
         const started = await response.json();

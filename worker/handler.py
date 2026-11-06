@@ -110,24 +110,85 @@ def scene_duration(scene):
     return max(1.0, min(10.0, value))
 
 
+def _spoken_units(text):
+    text = str(text or "").strip()
+    if not text:
+        return []
+    units = [part.strip() for part in re.split(r"(?<=[.!?])\\s+", text) if part.strip()]
+    if len(units) == 1:
+        words = units[0].split()
+        if len(words) > 12:
+            units = [" ".join(words[index:index + 12]) for index in range(0, len(words), 12)]
+    return units or [text]
+
+
+def _distribute_units(units, durations):
+    buckets = [[] for _ in durations]
+    if not units:
+        return buckets
+    weights = [max(1, len(str(unit.get("line") or unit.get("text") or unit).split())) for unit in units]
+    total_words = sum(weights)
+    total_duration = sum(durations)
+    elapsed_words = 0
+    elapsed_time = 0.0
+    boundaries = []
+    for duration in durations:
+        elapsed_time += duration
+        boundaries.append(elapsed_time)
+    for unit, weight in zip(units, weights):
+        midpoint = (elapsed_words + weight / 2) / total_words * total_duration
+        bucket = next((index for index, boundary in enumerate(boundaries) if midpoint <= boundary), len(durations) - 1)
+        buckets[bucket].append(unit)
+        elapsed_words += weight
+    return buckets
+
+
 def expand_scene_segments(scenes):
     segments = []
     for scene in scenes:
         try:
-            remaining = max(1.0, float(scene.get("durationSec") or (float(scene.get("end", 0)) - float(scene.get("start", 0)))))
+            total = max(1.0, float(scene.get("durationSec") or (float(scene.get("end", 0)) - float(scene.get("start", 0)))))
         except (TypeError, ValueError):
-            remaining = 6.0
-        part = 0
+            total = 6.0
+        try:
+            scene_start = float(scene.get("start", 0) or 0)
+        except (TypeError, ValueError):
+            scene_start = 0.0
+
+        durations = []
+        remaining = total
         while remaining > 0.01:
             length = min(10.0, remaining)
+            durations.append(length)
+            remaining -= length
+
+        narration_units = _spoken_units(scene.get("narration", ""))
+        dialogue = scene.get("dialogue") or []
+        if isinstance(dialogue, dict):
+            dialogue = [dialogue]
+        dialogue_units = [line for line in dialogue if isinstance(line, dict)] if isinstance(dialogue, list) else []
+        explicit_subtitles = scene.get("subtitlePhrases") or []
+        subtitle_units = [str(value) for value in explicit_subtitles if str(value).strip()] if isinstance(explicit_subtitles, list) else []
+
+        narration_parts = _distribute_units(narration_units, durations)
+        dialogue_parts = _distribute_units(dialogue_units, durations)
+        subtitle_parts = _distribute_units(subtitle_units, durations) if subtitle_units else [[] for _ in durations]
+
+        elapsed = 0.0
+        for part, length in enumerate(durations):
             segment = dict(scene)
             segment["durationSec"] = length
+            segment["start"] = scene_start + elapsed
+            segment["end"] = scene_start + elapsed + length
+            segment["narration"] = " ".join(narration_parts[part])
+            segment["dialogue"] = dialogue_parts[part]
+            if explicit_subtitles:
+                segment["subtitlePhrases"] = subtitle_parts[part]
+            segment["segmentIndex"] = part
             if part:
                 segment["action"] = str(scene.get("action", "")) + " Continue the same action naturally from the previous segment; do not restart or change the subject."
-            segment["segmentIndex"] = part
             segments.append(segment)
-            remaining -= length
-            part += 1
+            elapsed += length
     return segments
 
 
@@ -218,22 +279,28 @@ def generate_video_clip(story, scene, index, total, destination, reference_image
 
 
 def audio_block_data(interaction):
-    blocks = media_blocks(interaction, "audio")
-    if blocks:
-        return base64.b64decode(blocks[-1].get("data", ""))
     output_audio = interaction.get("output_audio")
     if isinstance(output_audio, dict) and output_audio.get("data"):
-        return base64.b64decode(output_audio["data"])
+        data = base64.b64decode(output_audio["data"])
+        if data:
+            return data
+    blocks = media_blocks(interaction, "audio")
+    for block in reversed(blocks):
+        encoded = block.get("data")
+        if encoded:
+            data = base64.b64decode(encoded)
+            if data:
+                return data
     raise RuntimeError("Gemini returned no audio data.")
 
 
 def build_tts_request(story, narrator_voice=None):
     characters = {str(item.get("id")): item for item in story.get("characters", []) if item.get("id")}
-    segments = []
+    turns = []
     for scene in story.get("scenes", []):
         narration = str(scene.get("narration") or "").strip()
         if narration:
-            segments.append({"speaker": "Narrator", "text": narration, "style": "confident, warm documentary narration with clear diction"})
+            turns.append({"speaker": "Narrator", "text": narration, "style": "warm, confident documentary narration with clear diction"})
         dialogue = scene.get("dialogue") or []
         if isinstance(dialogue, dict):
             dialogue = [dialogue]
@@ -245,15 +312,15 @@ def build_tts_request(story, narrator_voice=None):
             speaker = str(character.get("name") or line.get("speaker") or character_id or "Character")
             spoken = str(line.get("line") or line.get("text") or "").strip()
             if spoken:
-                segments.append({"speaker": speaker, "text": spoken, "style": "natural expressive character dialogue"})
-    if not segments:
+                turns.append({"speaker": speaker, "text": spoken, "style": "natural, expressive character dialogue"})
+    if not turns:
         narration = str(story.get("narration") or "").strip()
         if narration:
-            segments.append({"speaker": "Narrator", "text": narration, "style": "confident, warm documentary narration with clear diction"})
-    if not segments:
+            turns.append({"speaker": "Narrator", "text": narration, "style": "warm, confident documentary narration with clear diction"})
+    if not turns:
         raise RuntimeError("The Director plan contains no spoken narration or dialogue.")
 
-    speaker_order = list(dict.fromkeys(item["speaker"] for item in segments))
+    speaker_order = list(dict.fromkeys(item["speaker"] for item in turns))
     voice_names = {"Charon", "Kore", "Puck", "Aoede", "Fenrir", "Zephyr", "Leda", "Orus"}
 
     def character_voice(name, fallback):
@@ -261,49 +328,58 @@ def build_tts_request(story, narrator_voice=None):
         selected = item.get("voice")
         return selected if isinstance(selected, str) and selected in voice_names else fallback
 
-    if len(speaker_order) == 1:
-        speaker = speaker_order[0]
+    def voice_for(speaker):
         if speaker == "Narrator":
-            selected_voice = narrator_voice or TTS_VOICE
-        else:
-            selected_voice = character_voice(speaker, "Puck")
-        script = segments[0]["text"] if len(segments) == 1 else "\n\n".join(item["text"] for item in segments)
+            selected = narrator_voice or TTS_VOICE
+            return selected if selected in voice_names else TTS_VOICE
+        return character_voice(speaker, "Puck")
+
+    def single_speaker_request(turn):
         return {
-            "input": "Read the following narration/dialogue verbatim. Do not add, omit, paraphrase or repeat words. Use " +
-                     segments[0]["style"] + ".\n\n" + script,
-            "speech_config": [{"voice": selected_voice}],
+            "input": [{
+                "type": "user_input",
+                "content": [{
+                    "type": "text",
+                    "text": turn["text"],
+                    "annotations": [{"type": "speech_metadata", "style": turn["style"]}],
+                }],
+            }],
+            "speech_config": [{"voice": voice_for(turn["speaker"])}],
         }
+
+    if len(speaker_order) == 1:
+        combined = dict(turns[0])
+        combined["text"] = "\\n\\n".join(item["text"] for item in turns)
+        return single_speaker_request(combined)
+
+    # Gemini's multi-speaker TTS request supports two configured speakers.
+    # For larger casts, synthesize each turn with its own voice and concatenate
+    # the resulting WAVs in the original script order.
+    if len(speaker_order) > 2:
+        return {"segments": [single_speaker_request(turn) for turn in turns]}
 
     primary = "Narrator" if "Narrator" in speaker_order else speaker_order[0]
     secondary = next(name for name in speaker_order if name != primary)
-    if primary == "Narrator":
-        primary_voice = narrator_voice or TTS_VOICE
-    else:
-        primary_voice = character_voice(primary, "Puck")
-    secondary_voice = character_voice(secondary, "Kore")
     content = []
-    for segment in segments:
-        speaker = segment["speaker"] if segment["speaker"] in (primary, secondary) else secondary
+    for turn in turns:
         content.append({
             "type": "text",
-            "text": segment["text"],
+            "text": turn["text"],
             "annotations": [{
                 "type": "speech_metadata",
-                "speaker": speaker,
-                "style": segment["style"],
+                "speaker": turn["speaker"],
+                "style": turn["style"],
             }],
         })
     return {
         "input": [{"type": "user_input", "content": content}],
         "speech_config": {
-            "mode": "conversational",
             "speakers": [
-                {"speaker": primary, "voice": primary_voice},
-                {"speaker": secondary, "voice": secondary_voice},
+                {"speaker": primary, "voice": voice_for(primary)},
+                {"speaker": secondary, "voice": voice_for(secondary)},
             ]
         },
     }
-
 
 def generate_tts_audio(request, destination):
     errors = []
@@ -360,13 +436,35 @@ def distribute_story_narration(story):
         scene["narration"] = " ".join(chunk)
 
 
+def concat_wav_files(paths, destination, work, filename):
+    concat_file = Path(work) / filename
+    concat_file.write_text("".join(f"file '{Path(path).as_posix()}'\\n" for path in paths), encoding="utf-8")
+    run_ffmpeg([
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
+        "-c", "copy", str(destination),
+    ])
+    return destination
+
+
 def write_tts_wav(story, destination, voice=None):
     scenes = story.get("scenes") or []
+    work = Path(destination).parent
     if not scenes:
-        return generate_tts_audio(build_tts_request(story, voice), destination)
+        request = build_tts_request(story, voice)
+        if request.get("segments"):
+            raw_parts = []
+            for index, segment_request in enumerate(request["segments"]):
+                raw = work / f"voice_turn_{index + 1:02}.wav"
+                generate_tts_audio(segment_request, raw)
+                raw_parts.append(raw)
+                if index < len(request["segments"]) - 1:
+                    silence = work / f"voice_pause_{index + 1:02}.wav"
+                    run_ffmpeg(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.18", "-c:a", "pcm_s16le", str(silence)])
+                    raw_parts.append(silence)
+            return concat_wav_files(raw_parts, destination, work, "voice_turns.txt")
+        return generate_tts_audio(request, destination)
 
     distribute_story_narration(story)
-    work = Path(destination).parent
     voice_parts = []
     for index, scene in enumerate(scenes):
         duration = scene_duration(scene)
@@ -383,17 +481,23 @@ def write_tts_wav(story, destination, voice=None):
             scene_story["narration"] = ""
             request = build_tts_request(scene_story, voice)
             raw = work / f"voice_raw_{index + 1:02}.wav"
-            generate_tts_audio(request, raw)
+            if request.get("segments"):
+                raw_parts = []
+                for turn_index, segment_request in enumerate(request["segments"]):
+                    turn_path = work / f"voice_scene_{index + 1:02}_turn_{turn_index + 1:02}.wav"
+                    generate_tts_audio(segment_request, turn_path)
+                    raw_parts.append(turn_path)
+                    if turn_index < len(request["segments"]) - 1:
+                        silence = work / f"voice_scene_{index + 1:02}_pause_{turn_index + 1:02}.wav"
+                        run_ffmpeg(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.18", "-c:a", "pcm_s16le", str(silence)])
+                        raw_parts.append(silence)
+                concat_wav_files(raw_parts, raw, work, f"voice_scene_{index + 1:02}_turns.txt")
+            else:
+                generate_tts_audio(request, raw)
             scene["speechDurationSec"] = fit_voice_clip(raw, fitted, duration)
         voice_parts.append(fitted)
 
-    concat_file = work / "voice_parts.txt"
-    concat_file.write_text("".join(f"file '{path.as_posix()}'\n" for path in voice_parts), encoding="utf-8")
-    run_ffmpeg([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
-        "-c", "copy", str(destination),
-    ])
-    return destination
+    return concat_wav_files(voice_parts, destination, work, "voice_parts.txt")
 
 
 def generate_music(story, destination):
@@ -413,7 +517,6 @@ def generate_music(story, destination):
     interaction = api_request("/interactions", "POST", {
         "model": MUSIC_MODEL,
         "input": prompt,
-        "response_format": {"type": "audio"},
     }, timeout=600)
     interaction = wait_for_interaction(interaction, timeout=600)
     Path(destination).write_bytes(audio_block_data(interaction))
@@ -523,7 +626,7 @@ def normalize_clip(source, destination, duration, ambience_path):
         ])
 
 
-def assemble_final_video(normalized, ambience, voice, music, subtitles, total_duration, work, destination):
+def assemble_final_video(normalized, ambience, voice, music, subtitles, total_duration, work, destination, music_volume=0.12):
     if not normalized or not ambience:
         raise RuntimeError("The video assembly step received no generated scenes or scene audio.")
     concat_file = Path(work) / "clips.txt"
@@ -544,7 +647,8 @@ def assemble_final_video(normalized, ambience, voice, music, subtitles, total_du
     labels = ["[voice]", "[fx]"]
     if music:
         inputs.extend(["-stream_loop", "-1", "-i", str(music)])
-        filter_parts.append("[3:a]volume=0.16[music]")
+        music_volume = min(0.35, max(0.0, float(music_volume)))
+        filter_parts.append(f"[3:a]volume={music_volume:.3f}[music]")
         labels.append("[music]")
     filter_parts.append("".join(labels) + f"amix=inputs={len(labels)}:duration=longest:dropout_transition=2,loudnorm=I=-16:LRA=11:TP=-1.5[audio]")
     subtitle_filter = "subtitles=" + str(subtitles).replace(":", "\\:").replace("'", "\\'") + ":force_style='FontName=DejaVu Sans,FontSize=30,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=4,Shadow=1,Alignment=2,MarginV=100'"
@@ -625,7 +729,9 @@ def process_job(event):
         work = Path(temp)
         normalized = []
         ambience = []
-        total_duration = min(120, max(30, int(story.get("durationSec") or 45)))
+        planned_duration = float(story.get("durationSec") or 45)
+        scene_end = max((float(scene.get("end", 0) or 0) for scene in scenes), default=0)
+        total_duration = min(120, max(30, int(max(planned_duration, scene_end))))
         character_references = {}
         for index, scene in enumerate(scenes):
             duration = scene_duration(scene)
@@ -658,7 +764,8 @@ def process_job(event):
         music = generate_music(story, work / "music.mp3")
         subtitles = make_srt(story, work / "captions.srt")
         final = work / "final.mp4"
-        assemble_final_video(normalized, ambience, voice, music, subtitles, total_duration, work, final)
+        music_volume = float(settings.get("musicVolume", 0.12) or 0)
+        assemble_final_video(normalized, ambience, voice, music, subtitles, total_duration, work, final, music_volume)
 
         final_url = upload_to_supabase(final, job_id)
         log(f"Production complete: {job_id}")

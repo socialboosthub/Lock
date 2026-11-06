@@ -119,9 +119,13 @@ app.post("/api/explainer/video", limitVideoJobs, async (req, res) => {
         error: "Original background music is selected, but Lyria is not enabled for this deployment. It is a paid music service and must be explicitly configured first."
       });
     }
+    const requestedMusicVolume = Number(req.body?.musicVolume ?? 12);
+    const musicVolume = Number.isFinite(requestedMusicVolume)
+      ? Math.min(35, Math.max(0, requestedMusicVolume)) / 100
+      : 0.12;
     const productionStory = {
       ...story,
-      productionSettings: { voice, musicEnabled }
+      productionSettings: { voice, musicEnabled, musicVolume }
     };
     const jobId = crypto.randomUUID();
     const job = await startVideoJob({ jobId, story: productionStory });
