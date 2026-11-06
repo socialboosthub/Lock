@@ -159,7 +159,7 @@ app.post("/api/explainer/video", limitVideoJobs, async (req, res) => {
 app.get("/api/explainer/video/:jobId", async (req, res) => {
   try {
     const jobId = String(req.params.jobId || "");
-    if (!/^[A-Za-z0-9_-]{8,128}$/.test(jobId)) {
+    if (!/^[A-Za-z0-9_-]{8,512}$/.test(jobId)) {
       return res.status(400).json({ ok: false, error: "Invalid video job ID." });
     }
     const result = await getVideoJob(jobId);
