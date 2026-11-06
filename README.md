@@ -30,7 +30,7 @@ Run Node tests with `npm test`. Run worker tests with `python -m unittest discov
 
 Read [PRODUCTION_SETUP.md](./PRODUCTION_SETUP.md) before connecting production credentials.
 
-The Director requires `GEMINI_API_KEY`. The explainer planner tries the preferred model and then two stable Flash fallbacks when Google reports temporary overload.
+The Director requires `GEMINI_API_KEY`. The explainer planner tries the preferred model and then four alternate Flash models with bounded request timeouts when Google reports temporary overload.
 
 The complete video workflow additionally requires:
 - A RunPod Serverless endpoint built from `worker/Dockerfile`.
