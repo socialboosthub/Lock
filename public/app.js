@@ -947,9 +947,12 @@
         await waitMetadata(musicElement);
       }
 
+      if (audioDuration > 120) {
+        throw new Error("The narration is longer than AHM's 2-minute limit. Use a shorter voice recording.");
+      }
       const plannedDuration = Number(state.generatedStory?.durationSec) || 0;
       const targetDuration = Math.min(120, Math.max(
-        12,
+        30,
         audioDuration,
         plannedDuration || state.scenes.length * 3
       ));
