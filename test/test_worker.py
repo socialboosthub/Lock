@@ -76,6 +76,7 @@ class AHMWorkerTests(unittest.TestCase):
             }],
         }
         request = build_tts_request(story, "Charon")
+        self.assertEqual(request["speech_config"]["mode"], "conversational")
         self.assertEqual(len(request["speech_config"]["speakers"]), 2)
         self.assertEqual(request["speech_config"]["speakers"][0], {"speaker": "Narrator", "voice": "Charon"})
         self.assertEqual(request["speech_config"]["speakers"][1], {"speaker": "Elias", "voice": "Puck"})
