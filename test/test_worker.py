@@ -10,6 +10,7 @@ from worker.handler import (
     scene_prompt,
     build_tts_request,
     build_video_input,
+    audio_block_data,
     generate_music,
     handler,
     api_request,
@@ -127,6 +128,12 @@ class AHMWorkerTests(unittest.TestCase):
         content = request["input"][0]["content"]
         self.assertEqual(content[0]["annotations"][0]["speaker"], "Narrator")
         self.assertEqual(content[1]["annotations"][0]["speaker"], "Elias")
+
+    def test_audio_block_data_prefers_documented_output_audio(self):
+        import base64
+        expected = b"RIFFfake-wav"
+        interaction = {"output_audio": {"data": base64.b64encode(expected).decode("ascii")}}
+        self.assertEqual(audio_block_data(interaction), expected)
 
     def test_media_blocks_only_reads_model_output(self):
         interaction = {

@@ -114,7 +114,7 @@ def _spoken_units(text):
     text = str(text or "").strip()
     if not text:
         return []
-    units = [part.strip() for part in re.split(r"(?<=[.!?])\\s+", text) if part.strip()]
+    units = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
     if len(units) == 1:
         words = units[0].split()
         if len(words) > 12:
@@ -126,7 +126,10 @@ def _distribute_units(units, durations):
     buckets = [[] for _ in durations]
     if not units:
         return buckets
-    weights = [max(1, len(str(unit.get("line") or unit.get("text") or unit).split())) for unit in units]
+    weights = [
+        max(1, len(str((unit.get("line") or unit.get("text") or "") if isinstance(unit, dict) else unit).split()))
+        for unit in units
+    ]
     total_words = sum(weights)
     total_duration = sum(durations)
     elapsed_words = 0
@@ -349,7 +352,7 @@ def build_tts_request(story, narrator_voice=None):
 
     if len(speaker_order) == 1:
         combined = dict(turns[0])
-        combined["text"] = "\\n\\n".join(item["text"] for item in turns)
+        combined["text"] = "\n\n".join(item["text"] for item in turns)
         return single_speaker_request(combined)
 
     # Gemini's multi-speaker TTS request supports two configured speakers.
@@ -438,7 +441,7 @@ def distribute_story_narration(story):
 
 def concat_wav_files(paths, destination, work, filename):
     concat_file = Path(work) / filename
-    concat_file.write_text("".join(f"file '{Path(path).as_posix()}'\\n" for path in paths), encoding="utf-8")
+    concat_file.write_text("".join(f"file '{Path(path).as_posix()}'\n" for path in paths), encoding="utf-8")
     run_ffmpeg([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
         "-c", "copy", str(destination),
