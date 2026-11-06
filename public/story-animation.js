@@ -4,7 +4,7 @@
   const canvas = $("previewCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  let previewTimer = null;
+  let previewTimer = null;\n  let previewTimeout = null;
   let rendering = false;
   let previewStart = 0;
   let previewScenes = [];
@@ -96,7 +96,7 @@
     }ctx.globalAlpha=1;
   }
 
-  function limb(x1,y1,x2,y2,width,color){
+  function pathRoundRect(x,y,width,height,radius){\n    const r=Math.min(radius,width/2,height/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+width,y,x+width,y+height,r);ctx.arcTo(x+width,y+height,x,y+height,r);ctx.arcTo(x,y+height,x,y,r);ctx.arcTo(x,y,x+width,y,r);ctx.closePath();\n  }\n  function limb(x1,y1,x2,y2,width,color){
     ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
   function character(x,y,scale,t,action,variant=0){
@@ -118,7 +118,7 @@
     limb(7,hipY,12-legSwing*.55,25,10,"#18212c");
     limb(12-legSwing*.55,25,18-legSwing,62,8,"#202b39");
     // torso, shoulders and clothing
-    ctx.fillStyle=shirt;ctx.beginPath();ctx.roundRect(-23,-91,46,83,13);ctx.fill();
+    ctx.fillStyle=shirt;pathRoundRect(-23,-91,46,83,13);ctx.fill();
     ctx.fillStyle="rgba(255,255,255,.16)";ctx.fillRect(-15,-83,7,58);
     // arms with action-specific gestures
     const armColor=skin;
@@ -155,7 +155,7 @@
     } else if(/door|open|knock|entrance/.test(a)){
       ctx.fillStyle="#53352b";ctx.fillRect(w*.7,h*.35,72,h*.35);ctx.fillStyle="#d6a65e";ctx.beginPath();ctx.arc(w*.82,h*.52,4,0,Math.PI*2);ctx.fill();
     } else if(/car|vehicle|truck|bus/.test(a)){
-      ctx.fillStyle="#bd5547";ctx.beginPath();ctx.roundRect(w*.58,h*.61,130,48,12);ctx.fill();ctx.fillStyle="#9ad2dc";ctx.fillRect(w*.62,h*.62,36,19);ctx.fillRect(w*.68,h*.62,32,19);ctx.fillStyle="#10131a";ctx.beginPath();ctx.arc(w*.63,h*.7,12,0,Math.PI*2);ctx.arc(w*.82,h*.7,12,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#bd5547";pathRoundRect(w*.58,h*.61,130,48,12);ctx.fill();ctx.fillStyle="#9ad2dc";ctx.fillRect(w*.62,h*.62,36,19);ctx.fillRect(w*.68,h*.62,32,19);ctx.fillStyle="#10131a";ctx.beginPath();ctx.arc(w*.63,h*.7,12,0,Math.PI*2);ctx.arc(w*.82,h*.7,12,0,Math.PI*2);ctx.fill();
     } else if(/ball|orb|stone|rock/.test(a)){
       ctx.fillStyle="#e4b65d";ctx.shadowColor="#e4b65d";ctx.shadowBlur=18;ctx.beginPath();ctx.arc(w*.72,h*.55,22+Math.sin(t*4)*2,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
     }
@@ -196,7 +196,7 @@
   }
 
   function updateStatus(p,label){$("progressBar").style.width=Math.round(p*100)+"%";$("progressText").textContent=Math.round(p*100)+"%";$("renderStatus").textContent=label;}
-  function stopPreview(){if(previewTimer){clearInterval(previewTimer);previewTimer=null;}}
+  function stopPreview(){if(previewTimer){clearInterval(previewTimer);previewTimer=null;}if(previewTimeout){clearTimeout(previewTimeout);previewTimeout=null;}}
 
   function startPreview(){
     const scenes=getScenes();if(!scenes.length){alert("Create the AI Director plan first.");return;}
@@ -209,7 +209,7 @@
       drawFrame(scenes,index,progress,elapsed,duration);
       if(index!==lastScene){lastScene=index;$("previewCaption").textContent="Animated action · Scene "+(index+1)+" of "+scenes.length;}
     },33);
-    setTimeout(()=>{stopPreview();$("previewBtn").textContent="Preview full animation";},Math.min(duration*1000,20000));
+    previewTimeout=setTimeout(()=>{stopPreview();$("previewBtn").textContent="Preview full animation";},duration*1000);
   }
 
   async function makeVoiceover(text,voice){
