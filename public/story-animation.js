@@ -251,7 +251,8 @@
       const voiceBlob=voiceFile||await makeVoiceover(narration,$("voiceStyle")?.value||"Kore");
       const audioBuffer=await audio.decodeAudioData(await voiceBlob.arrayBuffer());
       if(audioBuffer.duration>120)throw new Error("The generated narration is longer than AHM's two-minute limit.");
-      const duration=Math.max(30,audioBuffer.duration);\n      const subtitleTimeline=buildSubtitleTimeline(narration,audioBuffer.duration);
+      const duration=Math.max(30,audioBuffer.duration);
+      const subtitleTimeline=buildSubtitleTimeline(narration,audioBuffer.duration);
       const voiceGain=audio.createGain();voiceGain.gain.value=1;voiceGain.connect(audio.destination);
       const voiceSource=audio.createBufferSource();voiceSource.buffer=audioBuffer;voiceSource.connect(voiceGain);
       previewAudio=audio;previewVoiceSource=voiceSource;
