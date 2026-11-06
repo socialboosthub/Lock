@@ -866,7 +866,7 @@
       drawScene(0, 0);
       $("previewTitle").textContent = story.title || "Your AHM video";
       $("previewCaption").textContent = `${state.scenes.length} AI-directed scenes · ${story.durationSec}s planned`;
-      status.textContent = `${story.contentMode === "story" ? "Cinematic story" : "Explainer"} plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Final voice and subtitle timing will be synchronized during production. No video has been created yet.`;
+      status.textContent = `${story.contentMode === "story" ? "Cinematic story" : "Explainer"} plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Scene captions are ready for the free local renderer. Add your own voice recording if you want spoken narration in the export.`;
 
       const intro = document.createElement("div");
       intro.className = "aiStorySummary";
