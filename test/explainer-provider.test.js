@@ -24,24 +24,26 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
     req.end = () => {
       const res = new EventEmitter();
       const attempt = requests.length;
-      res.statusCode = attempt <= 4 ? 503 : 200;
+      res.statusCode = attempt <= 2 ? 503 : 200;
       onResponse(res);
       queueMicrotask(() => {
-        const payload = attempt <= 4
+        const payload = attempt <= 2
           ? { error: { message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } }
-          : { candidates: [{
-              content: { parts: [{ text: JSON.stringify({
-                title: "How Light Travels",
-                topic: "Speed of light",
-                durationSec: 45,
-                narration: "Light travels incredibly fast.",
-                scenes: [
-                  { narration: "Light moves through space at an extraordinary speed." },
-                  { narration: "That speed is about 300,000 kilometres per second." }
-                ]
-              }) }] },
-              finishReason: "STOP"
-            }] };
+          : attempt === 3
+            ? { candidates: [{ content: { parts: [{ text: '{"title":"broken","scenes":[{"narration":"unfinished"}' }] } }] }
+            : { candidates: [{
+                content: { parts: [{ text: JSON.stringify({
+                  title: "How Light Travels",
+                  topic: "Speed of light",
+                  durationSec: 45,
+                  narration: "Light travels incredibly fast.",
+                  scenes: [
+                    { narration: "Light moves through space at an extraordinary speed." },
+                    { narration: "That speed is about 300,000 kilometres per second." }
+                  ]
+                }) }] },
+                finishReason: "STOP"
+              }] };
         res.emit("data", Buffer.from(JSON.stringify(payload)));
         res.emit("end");
       });
@@ -55,15 +57,14 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
     ]);
     assert.equal(result.status, "completed");
     assert.equal(result.story.scenes.length, 2);
-    assert.equal(requests.length, 5);
+    assert.equal(requests.length, 4);
     assert.match(requests[0].options.path, /models\/gemini-3\.8-flash:generateContent$/);
     assert.match(requests[1].options.path, /models\/gemini-3\.7-flash:generateContent$/);
     assert.match(requests[2].options.path, /models\/gemini-3\.6-flash:generateContent$/);
     assert.match(requests[3].options.path, /models\/gemini-3\.5-flash-lite:generateContent$/);
-    assert.match(requests[4].options.path, /models\/gemini-3\.1-flash-lite:generateContent$/);
-    assert.equal(requests[4].options.headers["x-goog-api-key"], "test-key");
+    assert.equal(requests[3].options.headers["x-goog-api-key"], "test-key");
     assert.equal(requests[4].options.headers["Api-Revision"], undefined);
-    const sent = JSON.parse(requests[4].body);
+    const sent = JSON.parse(requests[3].body);
     assert.equal(sent.generationConfig.responseMimeType, "application/json");
     assert.match(sent.contents[0].parts[0].text, /Speed of light/);
     assert.match(sent.contents[0].parts[0].text, /Professor Nova/);
