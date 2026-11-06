@@ -4,7 +4,8 @@
   const canvas = $("previewCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  let previewTimer = null;\n  let previewTimeout = null;
+  let previewTimer = null;
+  let previewTimeout = null;
   let rendering = false;
   let previewStart = 0;
   let previewScenes = [];
@@ -96,7 +97,10 @@
     }ctx.globalAlpha=1;
   }
 
-  function pathRoundRect(x,y,width,height,radius){\n    const r=Math.min(radius,width/2,height/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+width,y,x+width,y+height,r);ctx.arcTo(x+width,y+height,x,y+height,r);ctx.arcTo(x,y+height,x,y,r);ctx.arcTo(x,y,x+width,y,r);ctx.closePath();\n  }\n  function limb(x1,y1,x2,y2,width,color){
+  function pathRoundRect(x,y,width,height,radius){
+    const r=Math.min(radius,width/2,height/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+width,y,x+width,y+height,r);ctx.arcTo(x+width,y+height,x,y+height,r);ctx.arcTo(x,y+height,x,y,r);ctx.arcTo(x,y,x+width,y,r);ctx.closePath();
+  }
+  function limb(x1,y1,x2,y2,width,color){
     ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
   function character(x,y,scale,t,action,variant=0){
