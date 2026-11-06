@@ -281,7 +281,8 @@
         stopMusic=()=>{try{musicSource.stop();}catch{}};
       }else stopMusic=addSoundscape(audio,destination,120);
       const duration=getDuration(scenes);
-      const finalDuration=Math.max(duration,Math.min(120,audioBuffer.duration));
+      if(audioBuffer.duration>120)throw new Error("The generated narration is longer than AHM's two-minute limit. Shorten the script.");
+      const finalDuration=Math.max(duration,audioBuffer.duration);
       if(finalDuration>120)throw new Error("The generated narration is longer than AHM's two-minute limit. Shorten the script.");
       stream=canvas.captureStream(30);
       destination.stream.getAudioTracks().forEach(track=>stream.addTrack(track));
