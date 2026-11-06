@@ -13,7 +13,7 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
 
   process.env.GEMINI_API_KEY = "test-key";
   process.env.GEMINI_MODEL = "gemini-3.8-flash";
-  process.env.GEMINI_FALLBACK_MODELS = "gemini-3.7-flash,gemini-3.5-flash-lite";
+  process.env.GEMINI_FALLBACK_MODELS = "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite";
 
   https.request = (options, onResponse) => {
     const entry = { options, body: "" };
@@ -24,10 +24,10 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
     req.end = () => {
       const res = new EventEmitter();
       const attempt = requests.length;
-      res.statusCode = attempt === 1 ? 503 : 200;
+      res.statusCode = attempt <= 2 ? 503 : 200;
       onResponse(res);
       queueMicrotask(() => {
-        const payload = attempt === 1
+        const payload = attempt <= 2
           ? { error: { message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } }
           : { candidates: [{
               content: { parts: [{ text: JSON.stringify({
@@ -55,12 +55,13 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
     ]);
     assert.equal(result.status, "completed");
     assert.equal(result.story.scenes.length, 2);
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3);
     assert.match(requests[0].options.path, /models\/gemini-3\.8-flash:generateContent$/);
     assert.match(requests[1].options.path, /models\/gemini-3\.7-flash:generateContent$/);
-    assert.equal(requests[1].options.headers["x-goog-api-key"], "test-key");
-    assert.equal(requests[1].options.headers["Api-Revision"], undefined);
-    const sent = JSON.parse(requests[1].body);
+    assert.match(requests[2].options.path, /models\/gemini-3\.6-flash:generateContent$/);
+    assert.equal(requests[2].options.headers["x-goog-api-key"], "test-key");
+    assert.equal(requests[2].options.headers["Api-Revision"], undefined);
+    const sent = JSON.parse(requests[2].body);
     assert.equal(sent.generationConfig.responseMimeType, "application/json");
     assert.match(sent.contents[0].parts[0].text, /Speed of light/);
     assert.match(sent.contents[0].parts[0].text, /Professor Nova/);
