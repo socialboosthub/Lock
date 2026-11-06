@@ -296,6 +296,7 @@ def build_tts_request(story, narrator_voice=None):
     return {
         "input": [{"type": "user_input", "content": content}],
         "speech_config": {
+            "mode": "conversational",
             "speakers": [
                 {"speaker": primary, "voice": primary_voice},
                 {"speaker": secondary, "voice": secondary_voice},
