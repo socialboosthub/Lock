@@ -63,7 +63,7 @@ test("explainer falls back when the preferred Gemini model is overloaded", async
     assert.match(requests[2].options.path, /models\/gemini-3\.6-flash:generateContent$/);
     assert.match(requests[3].options.path, /models\/gemini-3\.5-flash-lite:generateContent$/);
     assert.equal(requests[3].options.headers["x-goog-api-key"], "test-key");
-    assert.equal(requests[4].options.headers["Api-Revision"], undefined);
+    assert.equal(requests[3].options.headers["Api-Revision"], undefined);
     const sent = JSON.parse(requests[3].body);
     assert.equal(sent.generationConfig.responseMimeType, "application/json");
     assert.match(sent.contents[0].parts[0].text, /Speed of light/);
