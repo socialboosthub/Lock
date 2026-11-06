@@ -10,6 +10,7 @@ from worker.handler import (
     scene_prompt,
     build_tts_request,
     build_video_input,
+    build_video_generation_request,
     audio_block_data,
     generate_music,
     handler,
@@ -98,6 +99,36 @@ class AHMWorkerTests(unittest.TestCase):
         self.assertEqual(request["segments"][0]["speech_config"], [{"voice": "Charon"}])
         self.assertEqual(request["segments"][1]["speech_config"], [{"voice": "Puck"}])
         self.assertEqual(request["segments"][2]["speech_config"], [{"voice": "Kore"}])
+
+    def test_video_generation_request_sets_duration_aspect_and_task(self):
+        story = {"title": "Light", "topic": "Light", "scenes": []}
+        request = build_video_generation_request(
+            story,
+            {"durationSec": 4, "action": "A photon crosses space."},
+            0,
+            1,
+        )
+        self.assertEqual(request["model"], "gemini-omni-1.1-flash")
+        self.assertEqual(request["generation_config"]["video_config"]["task"], "text_to_video")
+        self.assertEqual(request["response_format"]["aspect_ratio"], "9:16")
+        self.assertEqual(request["response_format"]["duration"], "4s")
+        self.assertEqual(request["response_format"]["delivery"], "uri")
+
+    def test_video_generation_request_uses_reference_to_video_for_character_images(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            reference = Path(temp) / "character.jpg"
+            reference.write_bytes(b"jpeg")
+            request = build_video_generation_request(
+                {"title": "Story", "characters": []},
+                {"durationSec": 2, "action": "A character waves."},
+                0,
+                1,
+                [reference],
+            )
+        self.assertEqual(request["generation_config"]["video_config"]["task"], "reference_to_video")
+        self.assertEqual(request["response_format"]["duration"], "3s")
+        self.assertIn("<IMAGE_REF_0>@Image1", request["input"][-1]["text"])
 
     def test_video_input_attaches_character_reference_images(self):
         import base64

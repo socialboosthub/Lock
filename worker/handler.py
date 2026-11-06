@@ -241,16 +241,25 @@ def build_video_input(prompt, reference_images=None):
     paths = list(reference_images or [])[:3]
     if not paths:
         return prompt
-    content = [{
-        "type": "text",
-        "text": prompt + "\\n\\nThe attached image(s) are exact visual identity references for returning characters. Preserve facial features, hair, clothing, proportions and distinctive marks. Do not copy the reference pose, framing or background."
-    }]
+    content = []
     for path in paths:
         content.append({
             "type": "image",
             "mime_type": "image/jpeg",
             "data": base64.b64encode(Path(path).read_bytes()).decode("ascii"),
         })
+    references = " ".join(
+        f"<IMAGE_REF_{index}>@Image{index + 1}" for index in range(len(paths))
+    )
+    content.append({
+        "type": "text",
+        "text": (
+            f"[# References {references}]\\n" + prompt +
+            "\\n\\nUse the supplied image(s) as visual identity references for returning characters. "
+            "Preserve facial features, hair, clothing, proportions and distinctive marks. "
+            "Do not copy the reference pose, framing or background."
+        ),
+    })
     return content
 
 
@@ -262,18 +271,31 @@ def extract_character_reference_frame(video_path, destination):
     return destination
 
 
-def generate_video_clip(story, scene, index, total, destination, reference_images=None):
+def build_video_generation_request(story, scene, index, total, reference_images=None):
     prompt = scene_prompt(story, scene, index, total)
-    result = api_request("/interactions", "POST", {
+    paths = list(reference_images or [])[:3]
+    requested_duration = max(3, min(10, int(scene_duration(scene) + 0.999)))
+    return {
         "model": VIDEO_MODEL,
-        "input": build_video_input(prompt, reference_images),
+        "input": build_video_input(prompt, paths),
+        "generation_config": {
+            "video_config": {
+                "task": "reference_to_video" if paths else "text_to_video",
+            }
+        },
         "response_format": {
             "type": "video",
             "aspect_ratio": "9:16",
             "resolution": "720p",
+            "duration": f"{requested_duration}s",
             "delivery": "uri",
         },
-    }, timeout=1200)
+    }
+
+
+def generate_video_clip(story, scene, index, total, destination, reference_images=None):
+    request = build_video_generation_request(story, scene, index, total, reference_images)
+    result = api_request("/interactions", "POST", request, timeout=1200)
     result = wait_for_interaction(result, timeout=1200)
     blocks = media_blocks(result, "video")
     if not blocks:
