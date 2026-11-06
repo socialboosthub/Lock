@@ -8,7 +8,7 @@ Create or use a Google AI Studio API key.
 
 - Vercel: set `GEMINI_API_KEY` for Preview and Production (only Preview is used while this branch is being tested).
 - RunPod endpoint: set the same `GEMINI_API_KEY` as a worker secret.
-- Director model: `gemini-3.8-flash`, with fallback models `gemini-3.7-flash` and `gemini-3.5-flash-lite`.
+- Director model: `gemini-3.8-flash`, with fallback models `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite` and `gemini-3.1-flash-lite`. The planner tries these sequentially with bounded timeouts when Google reports model-specific overload.
 - Narration: `gemini-3.8-flash-tts`, fallback `gemini-3.8-flash-lite-tts`.
 
 The text models have free-tier options, subject to Google quotas and availability.
