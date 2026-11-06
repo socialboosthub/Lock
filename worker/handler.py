@@ -254,8 +254,8 @@ def build_video_input(prompt, reference_images=None):
     content.append({
         "type": "text",
         "text": (
-            f"[# References {references}]\\n" + prompt +
-            "\\n\\nUse the supplied image(s) as visual identity references for returning characters. "
+            f"[# References {references}]\n" + prompt +
+            "\n\nUse the supplied image(s) as visual identity references for returning characters. "
             "Preserve facial features, hair, clothing, proportions and distinctive marks. "
             "Do not copy the reference pose, framing or background."
         ),

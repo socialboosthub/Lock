@@ -137,11 +137,11 @@ class AHMWorkerTests(unittest.TestCase):
             image_path.write_bytes(b"fake-jpeg-bytes")
             result = build_video_input("A cinematic scene", [image_path])
         self.assertIsInstance(result, list)
-        self.assertEqual(result[0]["type"], "text")
-        self.assertIn("visual identity references", result[0]["text"])
-        self.assertEqual(result[1]["type"], "image")
-        self.assertEqual(result[1]["mime_type"], "image/jpeg")
-        self.assertEqual(base64.b64decode(result[1]["data"]), b"fake-jpeg-bytes")
+        self.assertEqual(result[0]["type"], "image")
+        self.assertEqual(result[0]["mime_type"], "image/jpeg")
+        self.assertEqual(base64.b64decode(result[0]["data"]), b"fake-jpeg-bytes")
+        self.assertEqual(result[-1]["type"], "text")
+        self.assertIn("visual identity references", result[-1]["text"])
 
     def test_story_dialogue_uses_two_distinct_character_voices(self):
         story = {
