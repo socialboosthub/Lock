@@ -947,11 +947,12 @@
         await waitMetadata(musicElement);
       }
 
-      const targetDuration = Math.max(
+      const plannedDuration = Number(state.generatedStory?.durationSec) || 0;
+      const targetDuration = Math.min(120, Math.max(
+        12,
         audioDuration,
-        state.scenes.length * 4,
-        12
-      );
+        plannedDuration || state.scenes.length * 3
+      ));
 
       if (targetDuration > 120) {
         throw new Error(
