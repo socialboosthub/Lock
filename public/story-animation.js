@@ -41,7 +41,7 @@
   }
 
   function buildSubtitleTimeline(text,duration){
-    const tokens=String(text||"").trim().match(/[^\\s]+/g)||[];
+    const tokens=String(text||"").trim().match(/[^\s]+/g)||[];
     if(!tokens.length)return [];
     const chunks=[];let current=[];
     for(const token of tokens){
