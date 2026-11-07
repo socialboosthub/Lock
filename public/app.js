@@ -193,8 +193,8 @@
     state.videoJobId = null;
     try { localStorage.removeItem(ACTIVE_JOB_KEY); } catch {}
     $("savePlanCharactersBtn").disabled = true;
-    $("renderBtn").disabled = false;
-    $("renderBtn").textContent = "Render free sample video";
+    $("renderBtn").disabled = true;
+    $("renderBtn").textContent = "Create AI Director plan first";
     const script = $("scriptInput").value.trim();
     if (!script) {
       alert("Bro, paste your story or narration first.");
