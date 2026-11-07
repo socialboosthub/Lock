@@ -34,7 +34,7 @@ test("explainer starts the existing Gemini background Interactions workflow", as
     const result = await startExplainerGeneration("How light travels", "natural", [
       { name: "Professor Nova", description: "Silver glasses, navy coat." }
     ]);
-    assert.deepEqual(result, { id: "v1_background123", status: "in_progress" });
+    assert.deepEqual(result, { id: "v1_background123", status: "in_progress", model: "gemini-3.8-flash" });
     assert.equal(optionsSeen.method, "POST");
     assert.match(optionsSeen.path, /v1beta\/interactions$/);
     assert.equal(optionsSeen.headers["Api-Revision"], "2026-05-20");
