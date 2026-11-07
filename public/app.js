@@ -995,7 +995,7 @@
       // When a voice track is present, its measured duration becomes the caption
       // timeline instead of dividing the video into equal-length scenes.
       const sceneWeights = state.scenes.map(scene =>
-        Math.max(1, String(scene.caption || scene.narration || "").trim().split(/\\s+/).filter(Boolean).length)
+        Math.max(1, String(scene.caption || scene.narration || "").trim().split(/\s+/).filter(Boolean).length)
       );
       const totalSceneWeight = sceneWeights.reduce((sum, weight) => sum + weight, 0);
       const captionTimelineDuration = audioDuration > 0 ? audioDuration : targetDuration;
