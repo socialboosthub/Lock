@@ -991,7 +991,23 @@
         );
       }
 
-      const sceneDuration = targetDuration / state.scenes.length;
+      // Give each shot screen time in proportion to its spoken word count.
+      // When a voice track is present, its measured duration becomes the caption
+      // timeline instead of dividing the video into equal-length scenes.
+      const sceneWeights = state.scenes.map(scene =>
+        Math.max(1, String(scene.caption || scene.narration || "").trim().split(/\\s+/).filter(Boolean).length)
+      );
+      const totalSceneWeight = sceneWeights.reduce((sum, weight) => sum + weight, 0);
+      const captionTimelineDuration = audioDuration > 0 ? audioDuration : targetDuration;
+      let timelineCursor = 0;
+      const sceneTimeline = sceneWeights.map((weight, index) => {
+        const start = timelineCursor;
+        const end = index === sceneWeights.length - 1
+          ? captionTimelineDuration
+          : start + captionTimelineDuration * weight / totalSceneWeight;
+        timelineCursor = end;
+        return { start, end, duration: Math.max(0.05, end - start) };
+      });
 
       const AudioContextClass =
         window.AudioContext || window.webkitAudioContext;
@@ -1086,14 +1102,13 @@
           return;
         }
 
-        const index = Math.min(
-          state.scenes.length - 1,
-          Math.floor(elapsed / (sceneDuration * 1000))
-        );
-
-        const withinScene =
-          (elapsed % (sceneDuration * 1000)) /
-          (sceneDuration * 1000);
+        const elapsedSeconds = elapsed / 1000;
+        let index = sceneTimeline.findIndex(timing => elapsedSeconds < timing.end);
+        if (index < 0) index = state.scenes.length - 1;
+        const timing = sceneTimeline[index];
+        const withinScene = Math.min(1, Math.max(0,
+          (elapsedSeconds - timing.start) / timing.duration
+        ));
 
         if (index !== lastScene) {
           lastScene = index;
@@ -1101,7 +1116,9 @@
             `Scene ${index + 1} of ${state.scenes.length}`;
         }
 
-        drawScene(index, withinScene);
+        drawScene(index, withinScene,
+          audioDuration > 0 && elapsedSeconds >= audioDuration ? "" : null
+        );
         updateProgress(elapsed / totalMilliseconds, "RENDERING");
 
         animationFrame = requestAnimationFrame(tick);
