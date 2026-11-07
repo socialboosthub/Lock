@@ -232,6 +232,28 @@ class AHMWorkerTests(unittest.TestCase):
             if previous is not None:
                 os.environ["GEMINI_API_KEY"] = previous
 
+    def test_subtitles_use_measured_speech_phrase_timestamps(self):
+        story = {
+            "scenes": [{
+                "start": 4,
+                "end": 8,
+                "narration": "The light is moving.",
+                "speechDurationSec": 2,
+                "subtitlePhrases": ["The light is moving."],
+                "speechCues": [
+                    {"text": "The light", "start": 4.0, "end": 4.42},
+                    {"text": "is moving.", "start": 4.48, "end": 5.31},
+                ],
+            }]
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "measured.srt"
+            make_srt(story, path)
+            content = path.read_text(encoding="utf-8")
+        self.assertIn("00:00:04,000 --> 00:00:04,420", content)
+        self.assertIn("00:00:04,480 --> 00:00:05,310", content)
+        self.assertNotIn("00:00:04,000 --> 00:00:05,000", content)
+
     def test_subtitles_use_scene_timing_and_preserve_phrases(self):
         story = {
             "scenes": [
