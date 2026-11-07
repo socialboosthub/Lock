@@ -17,7 +17,7 @@ test.after(async () => {
   if (server) await new Promise(resolve => server.close(resolve));
 });
 
-test("explainer API generates a plan and includes saved character references", async () => {
+test("explainer API starts Gemini background planning and returns the completed plan when polled", async () => {
   const previousKey = process.env.GEMINI_API_KEY;
   const previousModel = process.env.GEMINI_MODEL;
   process.env.GEMINI_API_KEY = "gemini-test";
@@ -25,7 +25,9 @@ test("explainer API generates a plan and includes saved character references", a
 
   const originalRequest = https.request;
   let sentBody = "";
-  https.request = (_options, callback) => {
+  let sentOptions;
+  https.request = (options, callback) => {
+    sentOptions = options;
     const req = new EventEmitter();
     req.write = chunk => { sentBody += chunk; };
     req.setTimeout = () => {};
@@ -45,13 +47,15 @@ test("explainer API generates a plan and includes saved character references", a
           { id: "char_1", name: "Professor Nova", description: "Silver glasses and a navy coat." }
         ],
       };
+      const payload = options.method === "POST"
+        ? { id: "v1_testjob123", status: "in_progress" }
+        : {
+            id: "v1_testjob123",
+            status: "completed",
+            steps: [{ type: "model_output", content: [{ type: "text", text: JSON.stringify(story) }] }]
+          };
       queueMicrotask(() => {
-        res.emit("data", Buffer.from(JSON.stringify({
-          candidates: [{
-            content: { parts: [{ text: JSON.stringify(story) }] },
-            finishReason: "STOP"
-          }]
-        })));
+        res.emit("data", Buffer.from(JSON.stringify(payload)));
         res.emit("end");
       });
     };
@@ -69,16 +73,28 @@ test("explainer API generates a plan and includes saved character references", a
         ],
       }),
     });
-    const result = await response.json();
-    assert.equal(response.status, 200);
-    assert.equal(result.ok, true);
-    assert.equal(result.story.scenes.length, 1);
-    assert.deepEqual(result.story.scenes[0].subtitlePhrases, ["Light travels at an extraordinary", "speed."]);
-    assert.equal(result.video.status, "not_configured");
+    const started = await response.json();
+    assert.equal(response.status, 202);
+    assert.equal(started.ok, true);
+    assert.equal(started.status, "in_progress");
+    assert.equal(started.jobId, "v1_testjob123");
+    assert.equal(sentOptions.method, "POST");
+    assert.match(sentOptions.path, /v1beta\/interactions$/);
+    assert.equal(sentOptions.headers["Api-Revision"], "2026-05-20");
     const sent = JSON.parse(sentBody);
-    const prompt = sent.contents[0].parts[0].text;
-    assert.match(prompt, /Professor Nova/);
-    assert.match(prompt, /Silver glasses, navy coat, curly black hair/);
+    assert.equal(sent.model, "gemini-3.8-flash");
+    assert.equal(sent.background, true);
+    assert.match(sent.input, /Speed of light/);
+    assert.match(sent.input, /Professor Nova/);
+    assert.match(sent.input, /Silver glasses, navy coat, curly black hair/);
+
+    const completedResponse = await fetch(baseUrl + "/api/explainer/plan/" + started.jobId);
+    const completed = await completedResponse.json();
+    assert.equal(completedResponse.status, 200);
+    assert.equal(completed.status, "completed");
+    assert.equal(completed.story.scenes.length, 1);
+    assert.deepEqual(completed.story.scenes[0].subtitlePhrases, ["Light travels at an extraordinary", "speed."]);
+    assert.equal(completed.video.status, "not_configured");
   } finally {
     https.request = originalRequest;
     if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
