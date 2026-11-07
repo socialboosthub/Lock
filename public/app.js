@@ -836,10 +836,16 @@
       state.generatedStory = story;
       state.videoJobId = null;
       $("savePlanCharactersBtn").disabled = !(story.characters || []).length;
-      // Free-first local renderer is available even when no paid cloud worker is configured.
-      $("renderBtn").disabled = false;
-      $("renderBtn").textContent = "Render free sample video";
-      status.textContent = "Director plan ready. Render a free animated sample on this device; no paid video service is used.";
+      // Never route a real AI Director plan into the procedural canvas demo.
+      // Only enable complete-video generation when the full production worker is configured.
+      const fullVideoReady = started.video?.status === "ready";
+      $("renderBtn").disabled = !fullVideoReady;
+      $("renderBtn").textContent = fullVideoReady
+        ? "Generate complete cinematic video"
+        : "Full video renderer not connected";
+      status.textContent = fullVideoReady
+        ? "AI Director plan ready. Generate the complete cinematic video with scenes, narration and subtitles."
+        : "AI Director plan ready. The full cinematic video worker is not connected yet; AHM will not export a fake slideshow or silent sample.";
       $("titleInput").value = story.title || "AHM Studio video";
       $("scriptInput").value = story.narration || idea;
       state.storyBible = { characters: story.characters || [], environments: story.environments || [], props: story.props || [], beats: story.beats || [], continuityNotes: story.continuityNotes || [], storyArc: story.storyArc || null, titleFit: story.titleFit || null };
@@ -866,7 +872,7 @@
       drawScene(0, 0);
       $("previewTitle").textContent = story.title || "Your AHM video";
       $("previewCaption").textContent = `${state.scenes.length} AI-directed scenes · ${story.durationSec}s planned`;
-      status.textContent = `${story.contentMode === "story" ? "Cinematic story" : "Explainer"} plan ready: ${state.scenes.length} scenes · ${story.durationSec} seconds estimated. Scene captions are ready for the free local renderer. Add your own voice recording if you want spoken narration in the export.`;
+      status.textContent = `${story.contentMode === "story" ? "Cinematic story" : "Explainer"} plan ready: ${state.scenes.length} AI-directed scenes · ${story.durationSec} seconds. ${fullVideoReady ? "Ready for complete cinematic generation." : "Full video rendering is not connected; no placeholder export will be offered."}`;
 
       const intro = document.createElement("div");
       intro.className = "aiStorySummary";
@@ -1306,8 +1312,9 @@
   }
 
   $("renderBtn").addEventListener("click", () => {
-    // Free-first sample path. Paid cloud video generation remains separate and untouched.
-    renderVideo();
+    // The primary action must generate the real scene-by-scene video, not the old
+    // procedural canvas sample. Keep renderVideo() only as legacy local demo code.
+    generateFullVideo();
   });
 
   function readGeneratedVideoHistory() {
