@@ -9,5 +9,5 @@ test("AI Director polls Gemini background plans and the primary render action us
   assert.match(source, /const fullVideoReady = videoStatus\?\.status === "ready"/);
   assert.match(source, /\$\("renderBtn"\)\.disabled = !fullVideoReady/);
   assert.match(source, /\$\("renderBtn"\)\.addEventListener\("click", \(\) => \{[\s\S]*?generateFullVideo\(\);/);
-  assert.doesNotMatch(source, /\$\("renderBtn"\)\.addEventListener\("click", \(\) => \{\s*\/\/ Free-first sample path[\s\S]*?renderVideo\(\);/);
+  assert.doesNotMatch(source, /Render free sample video/);\n  assert.doesNotMatch(source, /\$\("renderBtn"\)\.addEventListener\("click", \(\) => \{\s*\/\/ Free-first sample path[\s\S]*?renderVideo\(\);/);
 });
