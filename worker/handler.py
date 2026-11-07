@@ -486,8 +486,8 @@ def _scene_speech_turns(scene):
     phrases = scene.get("subtitlePhrases") or []
     phrases = [str(value).strip() for value in phrases if str(value).strip()] if isinstance(phrases, list) else []
     if narration:
-        normalized_narration = re.sub(r"\\s+", " ", narration).strip()
-        normalized_phrases = re.sub(r"\\s+", " ", " ".join(phrases)).strip()
+        normalized_narration = re.sub(r"\s+", " ", narration).strip()
+        normalized_phrases = re.sub(r"\s+", " ", " ".join(phrases)).strip()
         if not phrases or normalized_phrases != normalized_narration:
             phrases = _spoken_units(narration)
     turns = [{"speaker": "Narrator", "text": phrase, "style": "warm, confident documentary narration with clear diction"} for phrase in phrases]
@@ -694,7 +694,7 @@ def make_srt(story, destination):
                 start = float(item.get("start", 0) or 0)
                 end = float(item.get("end", start) or start)
                 if phrase and end > start:
-                    rows.append(f"{cue}\\n{stamp(start)} --> {stamp(end)}\\n{phrase}\\n")
+                    rows.append(f"{cue}\n{stamp(start)} --> {stamp(end)}\n{phrase}\n")
                     cue += 1
             continue
 
@@ -725,10 +725,10 @@ def make_srt(story, destination):
         cursor = start
         for index, phrase in enumerate(phrases):
             next_cursor = end if index == len(phrases) - 1 else cursor + (end - start) * weights[index] / total
-            rows.append(f"{cue}\\n{stamp(cursor)} --> {stamp(next_cursor)}\\n{phrase}\\n")
+            rows.append(f"{cue}\n{stamp(cursor)} --> {stamp(next_cursor)}\n{phrase}\n")
             cue += 1
             cursor = next_cursor
-    Path(destination).write_text("\\n".join(rows), encoding="utf-8")
+    Path(destination).write_text("\n".join(rows), encoding="utf-8")
     return destination
 
 
