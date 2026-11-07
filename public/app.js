@@ -822,15 +822,37 @@
         })
       });
       const started = await startResponse.json();
-      if (!startResponse.ok || !started.ok) {
-        throw new Error(started.error || "Could not generate the explainer plan.");
+      if (!startResponse.ok || !started.ok || !started.jobId) {
+        throw new Error(started.error || "Could not start Gemini AI Director planning.");
       }
 
-      // Explainer planning now uses a direct model response, not a background
-      // interaction that can fail asynchronously after appearing to start.
-      const story = started.story;
+      // Gemini's background Interactions API is the reliable path for long,
+      // detailed scene plans. Poll the job route instead of timing out one
+      // synchronous generateContent request inside Vercel.
+      status.textContent = "Gemini Director is writing the story and planning every scene…";
+      const planDeadline = Date.now() + 10 * 60 * 1000;
+      let completedPlan = null;
+      while (Date.now() < planDeadline) {
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        const checkResponse = await fetch("/api/explainer/plan/" + encodeURIComponent(started.jobId));
+        const check = await checkResponse.json();
+        if (!checkResponse.ok || !check.ok) {
+          throw new Error(check.error || "Gemini could not finish the AI Director plan.");
+        }
+        if (check.status === "completed") {
+          completedPlan = check;
+          break;
+        }
+        status.textContent = "Gemini Director is planning your scenes… " + String(check.status || "processing").replace(/_/g, " ");
+      }
+      if (!completedPlan) {
+        throw new Error("Gemini is still working on your plan. Please try again in a moment; the background job may still be processing.");
+      }
+
+      const story = completedPlan.story;
+      const videoStatus = completedPlan.video;
       if (!story || !Array.isArray(story.scenes) || !story.scenes.length) {
-        throw new Error("AHM received an incomplete explainer plan. Please try again.");
+        throw new Error("AHM received an incomplete Gemini Director plan. Please try again.");
       }
 
       state.generatedStory = story;
@@ -838,7 +860,7 @@
       $("savePlanCharactersBtn").disabled = !(story.characters || []).length;
       // Never route a real AI Director plan into the procedural canvas demo.
       // Only enable complete-video generation when the full production worker is configured.
-      const fullVideoReady = started.video?.status === "ready";
+      const fullVideoReady = videoStatus?.status === "ready";
       $("renderBtn").disabled = !fullVideoReady;
       $("renderBtn").textContent = fullVideoReady
         ? "Generate complete cinematic video"
