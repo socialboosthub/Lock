@@ -882,7 +882,12 @@
       if (sceneCount) countSelect.value = String(sceneCount);
       state.scenes = (story.scenes || []).map((scene, index) => ({
         id: index + 1,
-        caption: scene.narration || scene.action || "",
+        caption: [
+          scene.narration || "",
+          ...(Array.isArray(scene.dialogue) ? scene.dialogue.map(line =>
+            line && typeof line === "object" ? String(line.line || line.text || "") : ""
+          ) : [])
+        ].filter(Boolean).join(" "),
         subtitlePhrases: scene.subtitlePhrases || [],
         visualPrompt: buildContinuityPrompt(scene, story),
         imageFile: null, imageUrl: null, image: null,
