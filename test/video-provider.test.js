@@ -127,3 +127,32 @@ test("video provider returns the final MP4 URL when the worker completes", async
     else process.env.AHM_VIDEO_WORKER_READY = previous.ready;
   }
 });
+
+
+test("Hugging Face single-clip credentials do not count as a complete AHM renderer", async () => {
+  const names = [
+    "RUNPOD_ENDPOINT_ID", "RUNPOD_API_KEY", "GEMINI_API_KEY",
+    "AHM_VIDEO_WORKER_READY", "HF_VIDEO_TOKEN", "HF_VIDEO_SPACE_URL",
+    "HF_VIDEO_API_NAME", "HF_VIDEO_INPUTS_JSON"
+  ];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  process.env.HF_VIDEO_TOKEN = "hf-test";
+  process.env.HF_VIDEO_SPACE_URL = "https://example.hf.space";
+  process.env.HF_VIDEO_API_NAME = "/generate_video";
+  process.env.HF_VIDEO_INPUTS_JSON = "[]";
+  for (const name of ["RUNPOD_ENDPOINT_ID", "RUNPOD_API_KEY", "GEMINI_API_KEY", "AHM_VIDEO_WORKER_READY"]) {
+    delete process.env[name];
+  }
+  try {
+    assert.equal(isVideoProviderConfigured(), false);
+    await assert.rejects(
+      startVideoJob({ jobId: "ahm-hf-only-1234", story: { title: "Test", scenes: [{ action: "A scene" }] } }),
+      error => error.code === "VIDEO_PROVIDER_NOT_CONFIGURED" && /short silent clip experiments only/.test(error.message)
+    );
+  } finally {
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});
