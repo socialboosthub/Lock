@@ -471,6 +471,44 @@ def concat_wav_files(paths, destination, work, filename):
     return destination
 
 
+def _tempo_filters(factor):
+    factor = max(1.0, float(factor))
+    filters = []
+    while factor > 2.0:
+        filters.append("atempo=2.0")
+        factor /= 2.0
+    filters.append(f"atempo={factor:.6f}")
+    return filters
+
+
+def _scene_speech_turns(scene):
+    narration = str(scene.get("narration") or "").strip()
+    phrases = scene.get("subtitlePhrases") or []
+    phrases = [str(value).strip() for value in phrases if str(value).strip()] if isinstance(phrases, list) else []
+    if narration:
+        normalized_narration = re.sub(r"\\s+", " ", narration).strip()
+        normalized_phrases = re.sub(r"\\s+", " ", " ".join(phrases)).strip()
+        if not phrases or normalized_phrases != normalized_narration:
+            phrases = _spoken_units(narration)
+    turns = [{"speaker": "Narrator", "text": phrase, "style": "warm, confident documentary narration with clear diction"} for phrase in phrases]
+    dialogue = scene.get("dialogue") or []
+    if isinstance(dialogue, dict):
+        dialogue = [dialogue]
+    if isinstance(dialogue, list):
+        for line in dialogue:
+            if not isinstance(line, dict):
+                continue
+            text = str(line.get("line") or line.get("text") or "").strip()
+            if text:
+                turns.append({
+                    "speaker": str(line.get("character") or line.get("speaker") or "Character"),
+                    "text": text,
+                    "style": "natural, expressive character dialogue",
+                    "dialogue": line,
+                })
+    return turns
+
+
 def write_tts_wav(story, destination, voice=None):
     scenes = story.get("scenes") or []
     work = Path(destination).parent
@@ -491,35 +529,84 @@ def write_tts_wav(story, destination, voice=None):
 
     distribute_story_narration(story)
     voice_parts = []
-    for index, scene in enumerate(scenes):
+    for scene_index, scene in enumerate(scenes):
         duration = scene_duration(scene)
-        fitted = work / f"voice_scene_{index + 1:02}.wav"
-        if not scene_has_speech(scene):
+        turns = _scene_speech_turns(scene)
+        if not turns:
+            fitted = work / f"voice_scene_{scene_index + 1:02}.wav"
             run_ffmpeg([
                 "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
                 "-t", str(duration), "-c:a", "pcm_s16le", str(fitted),
             ])
             scene["speechDurationSec"] = 0
-        else:
-            scene_story = dict(story)
-            scene_story["scenes"] = [scene]
-            scene_story["narration"] = ""
-            request = build_tts_request(scene_story, voice)
-            raw = work / f"voice_raw_{index + 1:02}.wav"
-            if request.get("segments"):
-                raw_parts = []
-                for turn_index, segment_request in enumerate(request["segments"]):
-                    turn_path = work / f"voice_scene_{index + 1:02}_turn_{turn_index + 1:02}.wav"
-                    generate_tts_audio(segment_request, turn_path)
-                    raw_parts.append(turn_path)
-                    if turn_index < len(request["segments"]) - 1:
-                        silence = work / f"voice_scene_{index + 1:02}_pause_{turn_index + 1:02}.wav"
-                        run_ffmpeg(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.18", "-c:a", "pcm_s16le", str(silence)])
-                        raw_parts.append(silence)
-                concat_wav_files(raw_parts, raw, work, f"voice_scene_{index + 1:02}_turns.txt")
+            scene["speechCues"] = []
+            voice_parts.append(fitted)
+            continue
+
+        # Synthesize each subtitle phrase independently. Its real waveform
+        # duration becomes the cue duration, eliminating word-count timing guesses.
+        raw_phrases = []
+        phrase_durations = []
+        for phrase_index, turn in enumerate(turns):
+            if turn["speaker"] == "Narrator":
+                mini_scene = {"narration": turn["text"], "dialogue": []}
             else:
-                generate_tts_audio(request, raw)
-            scene["speechDurationSec"] = fit_voice_clip(raw, fitted, duration)
+                mini_scene = {"narration": "", "dialogue": [turn.get("dialogue") or {
+                    "character": turn["speaker"], "line": turn["text"]
+                }]}
+            mini_story = dict(story)
+            mini_story["scenes"] = [mini_scene]
+            mini_story["narration"] = ""
+            request = build_tts_request(mini_story, voice)
+            if request.get("segments"):
+                raise RuntimeError("A single subtitle phrase unexpectedly produced multiple voice segments.")
+            raw = work / f"voice_scene_{scene_index + 1:02}_phrase_{phrase_index + 1:02}_raw.wav"
+            generate_tts_audio(request, raw)
+            measured = probe_audio_duration(raw)
+            if measured <= 0:
+                raise RuntimeError("Gemini returned an empty subtitle phrase recording.")
+            raw_phrases.append(raw)
+            phrase_durations.append(measured)
+
+        gap = 0.06
+        total_gap = gap * max(0, len(raw_phrases) - 1)
+        available_speech = max(0.1, duration - total_gap)
+        total_raw_speech = sum(phrase_durations)
+        tempo = max(1.0, total_raw_speech / available_speech)
+        scene_parts = []
+        cues = []
+        cursor = float(scene.get("start", 0) or 0)
+
+        for phrase_index, (raw, turn, raw_duration) in enumerate(zip(raw_phrases, turns, phrase_durations)):
+            fitted_phrase = work / f"voice_scene_{scene_index + 1:02}_phrase_{phrase_index + 1:02}.wav"
+            if tempo > 1.0001:
+                run_ffmpeg([
+                    "ffmpeg", "-y", "-i", str(raw), "-af", ",".join(_tempo_filters(tempo)),
+                    "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", str(fitted_phrase),
+                ])
+            else:
+                fitted_phrase = raw
+            actual_duration = raw_duration / tempo
+            cue_start = cursor
+            cue_end = min(float(scene.get("start", 0) or 0) + duration, cue_start + actual_duration)
+            cues.append({"text": turn["text"], "start": cue_start, "end": cue_end})
+            scene_parts.append(fitted_phrase)
+            cursor = cue_end
+            if phrase_index < len(raw_phrases) - 1:
+                silence = work / f"voice_scene_{scene_index + 1:02}_gap_{phrase_index + 1:02}.wav"
+                run_ffmpeg([
+                    "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                    "-t", str(gap), "-c:a", "pcm_s16le", str(silence),
+                ])
+                scene_parts.append(silence)
+                cursor = min(float(scene.get("start", 0) or 0) + duration, cursor + gap)
+
+        scene_raw = work / f"voice_scene_{scene_index + 1:02}_assembled.wav"
+        concat_wav_files(scene_parts, scene_raw, work, f"voice_scene_{scene_index + 1:02}_phrases.txt")
+        fitted = work / f"voice_scene_{scene_index + 1:02}.wav"
+        fit_voice_clip(scene_raw, fitted, duration)
+        scene["speechCues"] = cues
+        scene["speechDurationSec"] = max(0.0, cursor - float(scene.get("start", 0) or 0))
         voice_parts.append(fitted)
 
     return concat_wav_files(voice_parts, destination, work, "voice_parts.txt")
@@ -598,6 +685,20 @@ def make_srt(story, destination):
     rows = []
     cue = 1
     for scene in story.get("scenes", []):
+        timed_cues = scene.get("speechCues")
+        if isinstance(timed_cues, list) and timed_cues:
+            for item in timed_cues:
+                if not isinstance(item, dict):
+                    continue
+                phrase = str(item.get("text") or "").strip()
+                start = float(item.get("start", 0) or 0)
+                end = float(item.get("end", start) or start)
+                if phrase and end > start:
+                    rows.append(f"{cue}\\n{stamp(start)} --> {stamp(end)}\\n{phrase}\\n")
+                    cue += 1
+            continue
+
+        # Compatibility for older worker jobs and hand-authored timing fixtures.
         narration = str(scene.get("narration") or "").strip()
         dialogue = scene.get("dialogue") or []
         if isinstance(dialogue, dict):
@@ -624,10 +725,10 @@ def make_srt(story, destination):
         cursor = start
         for index, phrase in enumerate(phrases):
             next_cursor = end if index == len(phrases) - 1 else cursor + (end - start) * weights[index] / total
-            rows.append(f"{cue}\n{stamp(cursor)} --> {stamp(next_cursor)}\n{phrase}\n")
+            rows.append(f"{cue}\\n{stamp(cursor)} --> {stamp(next_cursor)}\\n{phrase}\\n")
             cue += 1
             cursor = next_cursor
-    Path(destination).write_text("\n".join(rows), encoding="utf-8")
+    Path(destination).write_text("\\n".join(rows), encoding="utf-8")
     return destination
 
 
