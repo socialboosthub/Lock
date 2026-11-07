@@ -97,3 +97,22 @@ test("Director subtitle splitting counts real words and preserves the original t
   assert.ok(phrases.length >= 2);
   assert.equal(phrases.join(" "), source);
 });
+
+
+test("Director preserves dialogue-led scenes without turning visual actions into narration", () => {
+  const story = normalizeStoryPackage({
+    title: "The Missing Letter",
+    contentMode: "story",
+    durationSec: 30,
+    scenes: [{
+      action: "Mara opens the old wooden door and freezes.",
+      narration: "",
+      dialogue: [{ character: "mara", line: "You came back." }]
+    }]
+  });
+  assert.equal(story.contentMode, "story");
+  assert.equal(story.scenes.length, 1);
+  assert.equal(story.scenes[0].narration, "");
+  assert.equal(story.scenes[0].action, "Mara opens the old wooden door and freezes.");
+  assert.equal(story.scenes[0].dialogue[0].line, "You came back.");
+});
